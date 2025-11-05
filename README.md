@@ -10,12 +10,12 @@ Interactive price optimization tool using Quick Sort and Binary Search. The Flas
 
 ## Project Structure
 ```
-flask-api-backend.py           # Flask app (serves HTML + API)
-price-optimization-website.html# Frontend (single HTML)
-price-optimization-backend.py  # Standalone DS/Algo script (optional)
-requirements.txt               # Python dependencies
-.gitignore                     # Git ignores (includes .venv/)
-README.md                      # This file
+flask-api-backend.py           
+price-optimization-website.html
+price-optimization-backend.py  
+requirements.txt               
+.gitignore                     
+README.md                      
 ```
 
 ## Requirements
@@ -32,14 +32,7 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-If requirements fail on your Python version, use these known-good pins for 3.11:
-```text
-Flask==2.3.3
-flask-cors==4.0.0
-matplotlib==3.8.4
-numpy==1.26.4
-pandas==2.1.4
-```
+
 
 ## Run Locally
 ```powershell
