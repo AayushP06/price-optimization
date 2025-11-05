@@ -94,10 +94,4 @@ Open `http://localhost:5000`
 4. Environment: Python 3.11. Render installs from `requirements.txt` and uses the `Procfile`.
 5. Open your Render URL (root `/` serves the site; API under `/api/...`).
 
-## Troubleshooting
-- Missing `flask_cors`: `pip install flask-cors`
-- Build errors on Python 3.13: switch to Python 3.11 (recommended)
-- Port already in use: stop prior server or change port in `flask-api-backend.py`
 
-## License
-MIT (or your preferred license)
