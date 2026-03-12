@@ -1,5 +1,30 @@
-﻿.venv/
+# Python
+.venv/
+venv/
 __pycache__/
 *.pyc
-price_optimization_analysis.png
+*.pyo
+*.pyd
+*.db
+instance/
+
+# Environment
 .env
+backend/.env
+
+# Data / outputs
+stored_data.json
+ml-model/optimization_results.json
+ml-model/price_optimization_analysis.png
+
+# Large data files (commit the CSV, not raw xlsx)
+*.xlsx
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Logs & misc
+*.log
+*.lnk

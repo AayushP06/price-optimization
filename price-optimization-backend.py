@@ -1,7 +1,4 @@
-# Dynamic Price Optimization System
-# Author: Aayush Prasad
-# Institution: VSSUT Burla
-# Course: Data Structures & Algorithms
+
 
 import random
 import time
@@ -9,16 +6,9 @@ import matplotlib.pyplot as plt
 from typing import List, Tuple, Dict
 import json
 
-# ============================================
-# SORTING ALGORITHMS
-# ============================================
+
 
 def quick_sort(prices: List[float], low: int, high: int) -> List[float]:
-    """
-    Quick Sort implementation for sorting competitor prices
-    Time Complexity: O(n log n) average, O(n²) worst case
-    Space Complexity: O(log n) due to recursion stack
-    """
     if low < high:
         pivot_idx = partition(prices, low, high)
         quick_sort(prices, low, pivot_idx - 1)
@@ -27,10 +17,7 @@ def quick_sort(prices: List[float], low: int, high: int) -> List[float]:
 
 
 def partition(prices: List[float], low: int, high: int) -> int:
-    """
-    Partition function for Quick Sort
-    Selects last element as pivot and arranges elements
-    """
+   
     pivot = prices[high]
     i = low - 1
     
@@ -43,16 +30,10 @@ def partition(prices: List[float], low: int, high: int) -> int:
     return i + 1
 
 
-# ============================================
-# SEARCHING ALGORITHMS
-# ============================================
+
 
 def binary_search(sorted_prices: List[float], target_price: float) -> int:
-    """
-    Binary Search to find target price or nearest position
-    Time Complexity: O(log n)
-    Space Complexity: O(1)
-    """
+   
     left, right = 0, len(sorted_prices) - 1
     
     while left <= right:
@@ -65,19 +46,17 @@ def binary_search(sorted_prices: List[float], target_price: float) -> int:
         else:
             right = mid - 1
     
-    return left  # Return insertion position if not found
+    return left  
 
 
 def find_optimal_price_range(sorted_prices: List[float], 
                              min_price: float, 
                              max_price: float) -> List[float]:
-    """
-    Find all prices within the optimal range using binary search
-    """
+    
     start_idx = binary_search(sorted_prices, min_price)
     end_idx = binary_search(sorted_prices, max_price)
     
-    # Adjust indices to include boundary values
+  
     if start_idx > 0 and sorted_prices[start_idx] > min_price:
         start_idx -= 1
     if end_idx < len(sorted_prices) and sorted_prices[end_idx] < max_price:
@@ -86,15 +65,9 @@ def find_optimal_price_range(sorted_prices: List[float],
     return sorted_prices[start_idx:end_idx]
 
 
-# ============================================
-# PROFIT CALCULATION ENGINE
-# ============================================
 
 class PriceOptimizer:
-    """
-    Main Price Optimization Engine
-    Analyzes competitor prices and recommends optimal pricing
-    """
+    
     
     def __init__(self, cost_price: float, fixed_costs: float = 0):
         self.cost_price = cost_price
@@ -105,13 +78,13 @@ class PriceOptimizer:
     
     
     def add_competitor_prices(self, prices: List[float]):
-        """Add competitor pricing data"""
+    
         self.competitor_prices.extend(prices)
         print(f"✓ Added {len(prices)} competitor prices")
     
     
     def sort_prices(self) -> float:
-        """Sort prices using Quick Sort and measure time"""
+    
         self.sorted_prices = self.competitor_prices.copy()
         
         start_time = time.time()
@@ -123,7 +96,7 @@ class PriceOptimizer:
     
     
     def calculate_profit_margin(self, selling_price: float) -> float:
-        """Calculate profit margin percentage"""
+        
         if selling_price <= self.cost_price:
             return 0
         profit = selling_price - self.cost_price - self.fixed_costs
@@ -132,18 +105,14 @@ class PriceOptimizer:
     
     
     def estimate_demand(self, selling_price: float) -> float:
-        """
-        Estimate demand based on price competitiveness
-        Lower prices = higher demand (simplified model)
-        """
-        if not self.sorted_prices:
-            return 50  # Default demand
         
-        # Calculate percentile rank
+        if not self.sorted_prices:
+            return 50 
+
         position = binary_search(self.sorted_prices, selling_price)
         percentile = (position / len(self.sorted_prices)) * 100
         
-        # Demand decreases as price increases
+       
         demand_factor = 100 - percentile
         base_demand = 100
         
@@ -151,11 +120,11 @@ class PriceOptimizer:
     
     
     def calculate_expected_profit(self, selling_price: float) -> float:
-        """Calculate expected profit considering demand"""
+        
         margin = self.calculate_profit_margin(selling_price)
         demand = self.estimate_demand(selling_price)
         
-        # Expected profit = profit per unit × estimated sales
+        
         profit_per_unit = selling_price - self.cost_price - self.fixed_costs
         expected_profit = profit_per_unit * demand
         
@@ -163,9 +132,7 @@ class PriceOptimizer:
     
     
     def analyze_price_points(self, min_margin: float = 15, max_margin: float = 35):
-        """
-        Analyze multiple price points and find optimal price
-        """
+       
         if not self.sorted_prices:
             print("⚠ Please sort prices first!")
             return
@@ -174,11 +141,11 @@ class PriceOptimizer:
         print("PRICE ANALYSIS IN PROGRESS...")
         print("="*60)
         
-        # Define price range based on desired margins
+       
         min_price = self.cost_price * (1 + min_margin/100)
         max_price = self.cost_price * (1 + max_margin/100)
         
-        # Search for prices in optimal range
+        
         start_time = time.time()
         price_range = find_optimal_price_range(self.sorted_prices, min_price, max_price)
         search_time = time.time() - start_time
@@ -186,15 +153,15 @@ class PriceOptimizer:
         print(f"✓ Binary Search completed in {search_time:.4f} seconds")
         print(f"✓ Found {len(price_range)} prices in optimal range")
         
-        # Analyze each price point
+        
         price_analysis = []
         
-        # Generate test price points
+       
         test_prices = []
         if price_range:
             test_prices = price_range[:min(10, len(price_range))]
         else:
-            # Fallback: generate prices within range
+            
             test_prices = [min_price + (max_price - min_price) * i / 10 
                           for i in range(11)]
         
@@ -210,7 +177,7 @@ class PriceOptimizer:
                 'expected_profit': round(expected_profit, 2)
             })
         
-        # Sort by expected profit
+     
         price_analysis.sort(key=lambda x: x['expected_profit'], reverse=True)
         
         self.analysis_results = {
@@ -288,12 +255,12 @@ class PriceOptimizer:
         
         optimal_price = self.analysis_results['optimal_price']['price']
         
-        # Create figure with subplots
+        
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
         fig.suptitle('Dynamic Price Optimization Analysis', 
                      fontsize=16, fontweight='bold')
         
-        # Plot 1: Price vs Profit Margin
+        
         ax1.plot(prices, margins, 'o-', color='#f39c12', 
                 linewidth=2, markersize=8, label='Profit Margin')
         ax1.axvline(optimal_price, color='#e67e22', 
@@ -304,7 +271,7 @@ class PriceOptimizer:
         ax1.grid(True, alpha=0.3)
         ax1.legend()
         
-        # Plot 2: Price vs Expected Profit
+       
         ax2.plot(prices, expected_profits, 's-', color='#27ae60', 
                 linewidth=2, markersize=8, label='Expected Profit')
         ax2.axvline(optimal_price, color='#e67e22', 
@@ -341,44 +308,38 @@ class PriceOptimizer:
         print(f"✓ Results exported to '{filename}'")
 
 
-# ============================================
-# SAMPLE DATA GENERATOR
-# ============================================
+
 
 def generate_sample_competitor_data(num_competitors: int = 50, 
                                    base_price: float = 1500,
                                    variation: float = 0.3) -> List[float]:
-    """
-    Generate realistic competitor pricing data
-    """
+    
     prices = []
     for _ in range(num_competitors):
-        # Random variation around base price
+        
         price = base_price * (1 + random.uniform(-variation, variation))
         prices.append(round(price, 2))
     
     return prices
 
 
-# ============================================
-# MAIN EXECUTION
-# ============================================
+
 
 def main():
-    """Main execution function"""
+    
     
     print("\n" + "="*60)
     print("DYNAMIC PRICE OPTIMIZATION SYSTEM")
     print("Using Quick Sort & Binary Search Algorithms")
     print("="*60 + "\n")
     
-    # Initialize the optimizer
-    cost_price = 1000  # Product cost
-    fixed_costs = 50   # Fixed costs per unit
+   
+    cost_price = 1000  
+    fixed_costs = 50   
     
     optimizer = PriceOptimizer(cost_price, fixed_costs)
     
-    # Generate sample competitor data
+    
     print("📊 Generating competitor pricing data...")
     competitor_prices = generate_sample_competitor_data(
         num_competitors=100,
@@ -388,22 +349,22 @@ def main():
     
     optimizer.add_competitor_prices(competitor_prices)
     
-    # Sort the prices
+    
     print("\n🔄 Sorting prices using Quick Sort...")
     sort_time = optimizer.sort_prices()
     
-    # Analyze and find optimal price
+    
     print("\n🔍 Analyzing price points...")
     optimal = optimizer.analyze_price_points(min_margin=15, max_margin=35)
     
-    # Display results
+    
     optimizer.display_results()
     
-    # Generate visualization
+    
     print("\n📈 Generating visualizations...")
     optimizer.visualize_results()
     
-    # Export results
+    
     optimizer.export_results()
     
     print("\n✅ Analysis Complete!")

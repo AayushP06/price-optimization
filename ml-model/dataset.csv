@@ -1,0 +1,6 @@
+product_name,cost_price,fixed_costs,num_competitors,optimal_price,expected_profit
+Wireless Earbuds,1000,50,50,1265.0,2150.50
+Laptop Stand,500,20,30,645.0,1020.30
+USB Hub,300,10,40,385.0,750.00
+Phone Case,150,5,60,195.0,480.20
+Mechanical Keyboard,2500,100,25,3175.0,5200.00
