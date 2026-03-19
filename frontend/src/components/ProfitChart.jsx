@@ -190,6 +190,9 @@ const ProfitChart = ({ data, optimalPrice }) => {
       </p>
 
       <div className={`chart-container ${isVisible ? 'chart-visible' : ''}`}>
+        <div style={{position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '5px', zIndex: 10, fontSize: '12px'}}>
+          [Debug] Points received: {data?.all_prices?.length || 'None (Fallback)'}
+        </div>
         <canvas ref={chartRef} id="profitChart"></canvas>
         {data && (
           <div className="chart-overlay">

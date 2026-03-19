@@ -8,7 +8,11 @@ const PriceOptimizer = ({ onOptimize }) => {
     fixedCosts: 50,
     availableUnits: '',
     numCompetitors: 100,
-    competitorPrices: ''
+    competitorPrices: '',
+    category: 'Electronics',
+    month: 6,
+    rating: 4.2,
+    adSpend: 1000
   });
 
   const [loading, setLoading] = useState(false);
@@ -100,7 +104,11 @@ const PriceOptimizer = ({ onOptimize }) => {
         fixed_costs: parseFloat(formData.fixedCosts),
         available_units: availableUnits,
         competitor_prices: competitorPrices.length > 0 ? competitorPrices : [],
-        num_competitors: competitorPrices.length > 0 ? undefined : numCompetitors
+        num_competitors: competitorPrices.length > 0 ? undefined : numCompetitors,
+        category: formData.category,
+        month: parseInt(formData.month),
+        rating: parseFloat(formData.rating),
+        ad_spend: parseFloat(formData.adSpend)
       };
 
       const res = await fetch('/api/optimize', {
@@ -115,9 +123,9 @@ const PriceOptimizer = ({ onOptimize }) => {
         throw new Error(json.error || 'Unknown error');
       }
 
-      setResult(json.data);
+      setResult(json);
       if (onOptimize) {
-        onOptimize(json.data);
+        onOptimize(json);
       }
     } catch (err) {
       setError(err.message);
@@ -158,6 +166,35 @@ const PriceOptimizer = ({ onOptimize }) => {
               <option value="budget">Budget</option>
               <option value="standard">Standard</option>
               <option value="premium">Premium</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="category">Product Category</label>
+            <select id="category" name="category" value={formData.category} onChange={handleChange}>
+              <option value="Electronics">Electronics</option>
+              <option value="Clothing">Clothing</option>
+              <option value="Home">Home</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Sports">Sports</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="month">Seasonality (Launch Month)</label>
+            <select id="month" name="month" value={formData.month} onChange={handleChange}>
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
             </select>
           </div>
           
@@ -212,6 +249,16 @@ const PriceOptimizer = ({ onOptimize }) => {
               onChange={handleChange}
               className={formData.fixedCosts >= 0 ? 'input-valid' : ''}
             />
+          </div>
+          
+          <div>
+            <label htmlFor="rating">Expected Customer Rating (1.0 - 5.0)</label>
+            <input type="number" id="rating" name="rating" min="1.0" max="5.0" step="0.1" value={formData.rating} onChange={handleChange} />
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="adSpend">Marketing Ad Spend (₹)</label>
+            <input type="number" id="adSpend" name="adSpend" min="0" step="100" value={formData.adSpend} onChange={handleChange} />
           </div>
           
           <div>
@@ -342,20 +389,6 @@ const PriceOptimizer = ({ onOptimize }) => {
         </div>
       </div>
 
-      <div className="features-grid">
-        <div className="card feature-card">
-          <h3>⚡ Fast & Accurate</h3>
-          <p>Get pricing recommendations in seconds with 95% accuracy compared to manual analysis.</p>
-        </div>
-        <div className="card feature-card">
-          <h3>📈 Boost Profits</h3>
-          <p>Average profit improvement of 18% when sellers adopt our recommended pricing.</p>
-        </div>
-        <div className="card feature-card">
-          <h3>🎯 Stay Competitive</h3>
-          <p>Balance profitability with market competitiveness automatically.</p>
-        </div>
-      </div>
     </section>
   );
 };

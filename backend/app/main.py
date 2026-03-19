@@ -10,13 +10,13 @@ Or from the backend/ directory:
 import os
 import sys
 
-# Ensure `backend/` is on sys.path so `from app.*` imports resolve correctly
+
 _backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
 from app import create_app
-from app.core.config import Config
+from app.api.core.config import Config
 
 app = create_app()
 

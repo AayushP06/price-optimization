@@ -18,10 +18,10 @@ from app.services.price_optimizer import (
     quick_sort,
     binary_search,
 )
+from app.services.xgb_optimizer import get_ml_optimizer
 
 api_bp = Blueprint("api", __name__)
 
-# Path to the JSON history file (sibling of this backend package)
 _HISTORY_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "stored_data.json"
 )
@@ -44,8 +44,6 @@ def _store_request_data(input_data: dict, result_data: dict):
         json.dump(data, f, indent=4)
 
 
-# ─────────────────────────── MAIN PAGE ──────────────────────────
-
 @api_bp.route("/")
 def index():
     html_path = os.path.join(
@@ -54,8 +52,6 @@ def index():
     )
     return send_file(os.path.abspath(html_path))
 
-
-# ─────────────────────────── OPTIMIZE ───────────────────────────
 
 @api_bp.route("/api/optimize", methods=["GET", "POST"])
 def optimize_price():
@@ -80,6 +76,11 @@ def optimize_price():
 
         min_margin = float(data.get("min_margin", 15))
         max_margin = float(data.get("max_margin", 35))
+        
+        category = data.get("category", "Electronics")
+        month = int(data.get("month", 6))
+        rating = float(data.get("rating", 4.2))
+        ad_spend = float(data.get("ad_spend", 1000.0))
 
         competitor_prices = data.get("competitor_prices", [])
         if not competitor_prices:
@@ -87,17 +88,22 @@ def optimize_price():
             base_price = cost_price * 1.5
             competitor_prices = generate_sample_data(base_price, num_competitors)
 
-        optimizer = PriceOptimizerAPI(cost_price, fixed_costs, available_units)
-        optimizer.add_prices(competitor_prices)
-        result = optimizer.analyze(min_margin, max_margin)
-
-        # Persist to JSON history
+        optimizer = get_ml_optimizer()
+        result = optimizer.recommend(
+            cost_price=cost_price,
+            fixed_costs=fixed_costs,
+            competitor_prices=competitor_prices,
+            min_margin=min_margin,
+            max_margin=max_margin,
+            category=category,
+            month=month,
+            rating=rating,
+            ad_spend=ad_spend
+        )
         try:
             _store_request_data(data, result)
         except Exception:
             pass
-
-        # Persist to database
         try:
             opt = Optimization(
                 product_id=data.get("product_id", f"product_{int(time.time())}"),
@@ -123,7 +129,64 @@ def optimize_price():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ─────────────────────── SAMPLE / SORT / SEARCH ─────────────────
+@api_bp.route("/api/optimize/ml", methods=["GET", "POST"])
+def optimize_price_ml():
+    """XGBoost-powered price recommendation using the trained model."""
+    if request.method == "GET":
+        return jsonify({
+            "endpoint":    "/api/optimize/ml",
+            "method":      "POST",
+            "description": "XGBoost price recommendation",
+            "model":       "XGBoost Regressor",
+        }), 200
+
+    data = request.json or {}
+    try:
+        cost_price = float(data.get("cost_price", 0))
+        if cost_price <= 0:
+            return jsonify({"success": False, "error": "cost_price must be > 0"}), 400
+
+        fixed_costs       = float(data.get("fixed_costs", 0))
+        min_margin        = float(data.get("min_margin", 5))
+        max_margin        = float(data.get("max_margin", 80))
+        
+        category = data.get("category", "Electronics")
+        month = int(data.get("month", 6))
+        rating = float(data.get("rating", 4.2))
+        ad_spend = float(data.get("ad_spend", 1000.0))
+        
+        competitor_prices = data.get("competitor_prices", [])
+
+        if not competitor_prices:
+            num_competitors   = int(data.get("num_competitors", 50))
+            base_price        = cost_price * 1.5
+            competitor_prices = generate_sample_data(base_price, num_competitors)
+
+        optimizer = get_ml_optimizer()
+        result    = optimizer.recommend(
+            cost_price=cost_price,
+            fixed_costs=fixed_costs,
+            competitor_prices=competitor_prices,
+            min_margin=min_margin,
+            max_margin=max_margin,
+            category=category,
+            month=month,
+            rating=rating,
+            ad_spend=ad_spend
+        )
+
+        try:
+            _store_request_data(data, result)
+        except Exception:
+            pass
+
+        return jsonify({"success": True, **result})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+
 
 @api_bp.route("/api/generate-sample", methods=["POST"])
 def generate_sample():
@@ -170,9 +233,6 @@ def search_price():
         "found": idx < len(sorted_prices) and sorted_prices[idx] == target,
     })
 
-
-# ─────────────────────────── HEALTH ─────────────────────────────
-
 @api_bp.route("/api/health")
 def health():
     try:
@@ -185,8 +245,6 @@ def health():
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
-
-# ─────────────────────────── HISTORY / STATS ────────────────────
 
 @api_bp.route("/api/history", methods=["GET"])
 def get_history():
@@ -242,9 +300,6 @@ def view_history():
         return jsonify({"success": True, "history": data})
     except Exception:
         return jsonify({"success": False, "error": "No data found"})
-
-
-# ─────────────────────────── ADMIN ──────────────────────────────
 
 @api_bp.route("/admin/status")
 def admin_status():

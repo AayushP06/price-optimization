@@ -3,7 +3,7 @@
 from flask import Flask
 from flask_cors import CORS
 
-from app.core.config import Config
+from app.api.core.config import Config
 from app.database.db import db
 
 

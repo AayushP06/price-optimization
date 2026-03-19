@@ -11,8 +11,6 @@ import time
 from typing import List, Dict
 
 
-# ─────────────────────────── SORTING ────────────────────────────
-
 def quick_sort(prices: List[float], low: int, high: int) -> List[float]:
     if low < high:
         pivot_idx = _partition(prices, low, high)
@@ -30,9 +28,6 @@ def _partition(prices: List[float], low: int, high: int) -> int:
             prices[i], prices[j] = prices[j], prices[i]
     prices[i + 1], prices[high] = prices[high], prices[i + 1]
     return i + 1
-
-
-# ─────────────────────────── SEARCH ─────────────────────────────
 
 def binary_search(sorted_prices: List[float], target: float) -> int:
     """Returns the insertion index of `target` in `sorted_prices`."""

@@ -56,69 +56,10 @@ function App() {
       <PriceOptimizer onOptimize={handleOptimize} />
       <ProfitChart data={chartData} optimalPrice={optimalPrice} />
       <Results />
-      
-      <section id="future">
-        <h2>Coming Soon</h2>
-        <p className="section-subtitle">Upcoming features to help you grow your business</p>
-        <ComingSoonFeatures />
-      </section>
-
       <Footer />
     </div>
   );
 }
-
-const ComingSoonFeatures = () => {
-  const features = [
-    {
-      title: 'AI-Powered Predictions',
-      description: 'Predict future price trends and seasonal demand patterns to help you plan ahead and maximize profits during peak seasons.'
-    },
-    {
-      title: 'Automatic Competitor Monitoring',
-      description: 'Continuously monitor competitor prices across multiple platforms in real-time, so you\'re always aware of market changes.'
-    },
-    {
-      title: 'Interactive Dashboard',
-      description: 'Visualize pricing trends, track performance, and adjust your strategy with an easy-to-use dashboard designed for sellers.'
-    },
-    {
-      title: 'Auto-Pricing',
-      description: 'Automatically adjust your prices based on market changes, keeping you competitive without constant manual updates.'
-    },
-    {
-      title: 'Bulk Product Management',
-      description: 'Optimize prices for your entire product catalog at once, considering relationships between products and inventory levels.'
-    },
-    {
-      title: 'Customer Insights',
-      description: 'Understand customer behavior and conversion patterns to refine your pricing strategy and boost sales.'
-    },
-    {
-      title: 'E-Commerce Integrations',
-      description: 'Connect directly with your favorite platforms like Shopify, WooCommerce, and Amazon Seller Central for seamless pricing updates.'
-    },
-    {
-      title: 'Mobile App',
-      description: 'Access pricing recommendations and market insights on the go with our mobile app for iOS and Android.'
-    },
-    {
-      title: 'Price Testing Tools',
-      description: 'Test different pricing strategies and measure their impact on your sales and profitability with built-in A/B testing.'
-    }
-  ];
-
-  return (
-    <div className="scope-list">
-      {features.map((feature, idx) => (
-        <div key={idx} className="scope-item">
-          <h4>{feature.title}</h4>
-          <p>{feature.description}</p>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 export default App;
 
