@@ -1,56 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const Navbar = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const close = () => setMenuOpen(false);
+const Navbar = ({ onRunAnalysis }) => {
+  const [open, setOpen] = useState(false);
+  const navigate = (id) => {
+    document.querySelector(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setOpen(false);
+  };
 
   return (
-    <nav style={{ boxShadow: scrolled ? '0 4px 24px rgba(0,0,0,0.4)' : 'none' }}>
-      <div className="container">
-        <div className="logo">⚡ PriceOptimizer</div>
-
-        <div
-          className={`menu-toggle ${menuOpen ? 'active' : ''}`}
-          onClick={() => setMenuOpen(v => !v)}
-          aria-label="Toggle menu"
-        >
-          <span />
-          <span />
-          <span />
+    <header className="topbar">
+      <div className="topbar-inner">
+        <button className="brand" onClick={() => navigate('#overview')} aria-label="Back to overview">
+          <span className="brand-mark">P</span> pricely<span className="brand-dot">.</span>
+        </button>
+        <button className="mobile-menu" onClick={() => setOpen((value) => !value)} aria-label="Toggle navigation" aria-expanded={open}>
+          <span></span><span></span>
+        </button>
+        <nav className={open ? 'nav-links nav-open' : 'nav-links'} aria-label="Main navigation">
+          <button onClick={() => navigate('#overview')}>Overview</button>
+          <button onClick={() => navigate('#workspace')}>Optimizer</button>
+          <button onClick={() => navigate('#insights')}>Insights</button>
+        </nav>
+        <div className="topbar-actions">
+          <span className="live-status"><i></i> Live analysis</span>
+          <button className="button button-small" onClick={onRunAnalysis}>New analysis <span>↗</span></button>
         </div>
-
-        <ul className={menuOpen ? 'active' : ''} id="navMenu">
-          <li><a href="#home"     onClick={close}>Home</a></li>
-          <li><a href="#optimize" onClick={close}>Optimize</a></li>
-          <li><a href="#insights" onClick={close}>Insights</a></li>
-          <li><a href="#results"  onClick={close}>Results</a></li>
-          <li>
-            <a
-              href="#optimize"
-              onClick={close}
-              style={{
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                color: '#fff',
-                padding: '0.4rem 1rem',
-                borderRadius: '9999px',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-              }}
-            >
-              Try Free →
-            </a>
-          </li>
-        </ul>
       </div>
-    </nav>
+    </header>
   );
 };
 

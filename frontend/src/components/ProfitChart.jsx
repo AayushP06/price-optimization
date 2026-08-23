@@ -1,29 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 
 const ProfitChart = ({ data, optimalPrice }) => {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (!chartRef.current) return;
-
     const ctx = chartRef.current.getContext('2d');
 
-    // Destroy existing chart if it exists
     if (chartInstance.current) {
       chartInstance.current.destroy();
     }
 
-    // Use provided data or default sample data
-    const pricePoints = data?.all_prices?.map(p => p.price) || 
-      [1200, 1300, 1400, 1450, 1500, 1550, 1599, 1650, 1700, 1750, 1800, 1850, 1900];
-    const profitMargins = data?.all_prices?.map(p => p.margin) || 
-      [10, 14, 18, 20, 23, 25, 26, 25.5, 24, 22, 20, 17, 14];
+    // Default placeholder data if none provided
+    const pricePoints = data?.all_prices?.map(p => p.price) || [1200, 1300, 1400, 1450, 1500, 1550, 1599, 1650, 1700];
+    const profitMargins = data?.all_prices?.map(p => p.margin) || [10, 14, 18, 20, 23, 25, 26, 25.5, 24];
     const expectedProfits = data?.all_prices?.map(p => p.expected_profit) || [];
 
-    // Find optimal index
     const optimalIndex = optimalPrice 
       ? pricePoints.findIndex(p => Math.abs(p - optimalPrice) < 1)
       : profitMargins.indexOf(Math.max(...profitMargins));
@@ -36,12 +30,11 @@ const ProfitChart = ({ data, optimalPrice }) => {
           {
             label: 'Profit Margin (%)',
             data: profitMargins,
-            borderColor: '#f39c12',
-            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+            borderColor: '#8b5cf6', // Violet
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
             borderWidth: 3,
-            pointRadius: pricePoints.map((_, i) => i === optimalIndex ? 10 : 6),
-            pointHoverRadius: 8,
-            pointBackgroundColor: pricePoints.map((_, i) => i === optimalIndex ? '#e67e22' : '#f39c12'),
+            pointRadius: pricePoints.map((_, i) => i === optimalIndex ? 8 : 4),
+            pointBackgroundColor: pricePoints.map((_, i) => i === optimalIndex ? '#10b981' : '#8b5cf6'),
             pointBorderColor: '#fff',
             pointBorderWidth: 2,
             tension: 0.4,
@@ -51,10 +44,9 @@ const ProfitChart = ({ data, optimalPrice }) => {
           ...(expectedProfits.length > 0 ? [{
             label: 'Expected Profit (₹)',
             data: expectedProfits,
-            borderColor: '#3498db',
-            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            borderColor: '#6366f1', // Indigo
             borderWidth: 2,
-            pointRadius: 4,
+            pointRadius: 0, // Hide dots to keep it clean
             tension: 0.4,
             fill: false,
             yAxisID: 'y1'
@@ -64,154 +56,49 @@ const ProfitChart = ({ data, optimalPrice }) => {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false,
-        },
+        interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            display: true,
-            labels: {
-              color: '#e8e8e8',
-              font: { size: 14 }
-            }
-          },
+          legend: { labels: { color: '#94a3b8' } },
           tooltip: {
-            backgroundColor: 'rgba(20, 27, 58, 0.9)',
-            titleColor: '#f39c12',
-            bodyColor: '#e8e8e8',
-            borderColor: '#f39c12',
+            backgroundColor: '#0f172a',
+            titleColor: '#f8fafc',
+            bodyColor: '#e2e8f0',
+            borderColor: '#334155',
             borderWidth: 1,
-            padding: 12,
-            callbacks: {
-              label: function(context) {
-                if (context.datasetIndex === 0) {
-                  return 'Margin: ' + context.parsed.y + '%';
-                } else {
-                  return 'Profit: ₹' + context.parsed.y.toLocaleString('en-IN');
-                }
-              },
-              title: function(context) {
-                return 'Price: ' + context[0].label;
-              }
-            }
+            padding: 12
           }
         },
         scales: {
           x: {
-            title: {
-              display: true,
-              text: 'Price Point (₹)',
-              color: '#f39c12',
-              font: { size: 14, weight: 'bold' }
-            },
-            ticks: { color: '#e8e8e8' },
-            grid: { color: 'rgba(42, 53, 85, 0.5)' }
+            ticks: { color: '#64748b' },
+            grid: { color: 'rgba(51, 65, 85, 0.3)' }
           },
           y: {
             type: 'linear',
-            display: true,
             position: 'left',
-            title: {
-              display: true,
-              text: 'Profit Margin (%)',
-              color: '#f39c12',
-              font: { size: 14, weight: 'bold' }
-            },
-            ticks: {
-              color: '#e8e8e8',
-              callback: function(value) {
-                return value + '%';
-              }
-            },
-            grid: { color: 'rgba(42, 53, 85, 0.5)' }
+            ticks: { color: '#64748b', callback: value => value + '%' },
+            grid: { color: 'rgba(51, 65, 85, 0.3)' }
           },
           ...(expectedProfits.length > 0 ? {
             y1: {
               type: 'linear',
-              display: true,
               position: 'right',
-              title: {
-                display: true,
-                text: 'Expected Profit (₹)',
-                color: '#3498db',
-                font: { size: 14, weight: 'bold' }
-              },
-              ticks: {
-                color: '#e8e8e8',
-                callback: function(value) {
-                  return '₹' + value.toLocaleString('en-IN');
-                }
-              },
-              grid: {
-                drawOnChartArea: false,
-              },
+              ticks: { color: '#64748b' },
+              grid: { drawOnChartArea: false }
             }
           } : {})
         }
       }
     });
 
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
-    };
+    return () => chartInstance.current?.destroy();
   }, [data, optimalPrice]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    if (chartRef.current) {
-      observer.observe(chartRef.current);
-    }
-
-    return () => {
-      if (chartRef.current) {
-        observer.unobserve(chartRef.current);
-      }
-    };
-  }, []);
-
   return (
-    <section id="insights" className={isVisible ? 'section-visible' : ''}>
-      <h2>Price vs. Profit Analysis</h2>
-      <p className="section-subtitle">
-        See how different price points affect your profit margin
-      </p>
-
-      <div className={`chart-container ${isVisible ? 'chart-visible' : ''}`}>
-        <div style={{position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '5px', zIndex: 10, fontSize: '12px'}}>
-          [Debug] Points received: {data?.all_prices?.length || 'None (Fallback)'}
-        </div>
-        <canvas ref={chartRef} id="profitChart"></canvas>
-        {data && (
-          <div className="chart-overlay">
-            <div className="chart-tip">
-              💡 Hover over data points to see detailed information
-            </div>
-          </div>
-        )}
-      </div>
-      
-      <p className="chart-description">
-        <strong>Understanding the Chart:</strong> This graph shows how different price points affect your profit margins. 
-        The optimal price (highlighted in orange) is the sweet spot where you maximize profit while staying competitive. 
-        Prices that are too low reduce your margins, while prices that are too high may reduce sales volume.
-      </p>
-    </section>
+    <div style={{ position: 'relative', height: '300px', width: '100%' }}>
+      <canvas ref={chartRef}></canvas>
+    </div>
   );
 };
 
 export default ProfitChart;
-
-

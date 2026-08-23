@@ -7,13 +7,31 @@ from typing import List, Dict
 import json
 from datetime import datetime
 import os
+import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
+import numpy as np
+
 app = Flask(__name__)
 CORS(app)
+
+def convert_numpy(obj):
+    if isinstance(obj, dict):
+        return {k: convert_numpy(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_numpy(i) for i in obj]
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    return obj
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL', 
@@ -23,7 +41,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Database Model
+
 class Optimization(db.Model):
     __tablename__ = 'optimizations'
     
@@ -33,17 +51,16 @@ class Optimization(db.Model):
     fixed_costs = db.Column(db.Float, default=0)
     available_units = db.Column(db.Integer, nullable=True)
     
-    # Results
     recommended_price = db.Column(db.Float)
     expected_profit = db.Column(db.Float)
     expected_units_sold = db.Column(db.Integer)
     
-    # JSON columns for complex data
+ 
     competitor_prices = db.Column(db.JSON)
     competitor_stats = db.Column(db.JSON)
     price_analysis = db.Column(db.JSON)
     
-    # Metadata
+
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     duration_ms = db.Column(db.Float)
     
@@ -58,10 +75,8 @@ class Optimization(db.Model):
             'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }
 
-# Create tables
 with app.app_context():
     db.create_all()
-# ---------------------------- SORTING ---------------------------------
 
 def quick_sort(prices: List[float], low: int, high: int) -> List[float]:
     if low < high:
@@ -82,7 +97,7 @@ def partition(prices: List[float], low: int, high: int) -> int:
     prices[i + 1], prices[high] = prices[high], prices[i + 1]
     return i + 1
 
-# ----------------------------- SEARCH ----------------------------------
+
 
 def binary_search(sorted_prices: List[float], target_price: float) -> int:
     left, right = 0, len(sorted_prices) - 1
@@ -99,7 +114,7 @@ def binary_search(sorted_prices: List[float], target_price: float) -> int:
     
     return left
 
-# --------------------------- MAIN PRICE OPTIMIZER -----------------------
+
 
 class PriceOptimizerAPI:
     
@@ -146,7 +161,7 @@ class PriceOptimizerAPI:
         demand_units = base_demand * demand_factor
         return max(10.0, demand_units)
     
-    # ---------------------- UPDATED EXPECTED PROFIT -----------------------
+
     def calculate_expected_profit(self, selling_price: float) -> float:
         profit_per_unit = selling_price - self.cost_price - self.fixed_costs
         if profit_per_unit <= 0:
@@ -154,7 +169,7 @@ class PriceOptimizerAPI:
 
         demand_units = self.estimate_demand(selling_price)
 
-        # ✅ CAP DEMAND BASED ON AVAILABLE STOCK
+  
         if self.available_units is not None:
             actual_units_sold = min(demand_units, self.available_units)
         else:
@@ -190,8 +205,8 @@ class PriceOptimizerAPI:
                 'expected_profit': round(expected_profit, 2)
             })
         
-        price_analysis.sort(key=lambda x: x['expected_profit'], reverse=True)
-        optimal = price_analysis[0]
+        optimal = max(price_analysis, key=lambda x: x['expected_profit'])
+        price_analysis.sort(key=lambda x: x['price'])
         
         n = len(self.sorted_prices)
         if n == 0:
@@ -226,21 +241,20 @@ def store_request_data(input_data, result_data):
     }
 
     try:
-        # Try reading existing data
+       
         with open("stored_data.json", "r") as f:
             data = json.load(f)
     except:
-        # If file doesn't exist, create new list
+    
         data = []
 
-    # Add new entry
+ 
     data.append(entry)
 
-    # Save it back
     with open("stored_data.json", "w") as f:
         json.dump(data, f, indent=4)
 
-# ------------------------------- ROUTES ----------------------------------
+
 
 @app.route('/')
 def index():
@@ -257,38 +271,80 @@ def optimize_price():
             'description': 'Get optimal price recommendation',
         }), 200
 
-   # At the end of your optimize function, BEFORE return
-    result = optimizer.optimize()  # Your existing line
-    
-    # ADD THIS CODE HERE (before return):
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Missing JSON payload'}), 400
+    try:
+        cost_price = float(data['cost_price'])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Invalid or missing cost_price'}), 400
+    fixed_costs = float(data.get('fixed_costs', 0))
+    available_units = data.get('available_units')
+    if available_units is not None:
+        try:
+            available_units = int(available_units)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid available_units'}), 400
+
+    competitor_prices = data.get('competitor_prices')
+    if competitor_prices:
+        try:
+            competitor_prices = [float(p) for p in competitor_prices if p is not None]
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Invalid competitor_prices'}), 400
+    else:
+        base_price = float(data.get('base_price', 1500))
+        num_competitors = int(data.get('num_competitors', 50))
+        variation = float(data.get('variation', 0.3))
+        competitor_prices = generate_sample_data(base_price, num_competitors, variation)
+
+    category = str(data.get('category', 'Electronics'))
+    month = int(data.get('month', 6))
+    rating = float(data.get('rating', 4.2))
+    ad_spend = float(data.get('ad_spend', 1000))
+
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
+    from app.services.xgb_optimizer import get_ml_optimizer
+    ml_optimizer = get_ml_optimizer()
+    start_time = time.time()
+    result = ml_optimizer.recommend(
+        cost_price=cost_price,
+        fixed_costs=fixed_costs,
+        competitor_prices=competitor_prices if len(competitor_prices) > 0 else None,
+        category=category,
+        month=month,
+        rating=rating,
+        ad_spend=ad_spend,
+    )
+    duration_ms = (time.time() - start_time) * 1000
+    result['success'] = True
+    result['performance'] = {'duration_ms': round(duration_ms, 2)}
+    result = convert_numpy(result)
+    competitor_prices = convert_numpy(competitor_prices)
+
     try:
         optimization = Optimization(
             product_id=data.get('product_id', f'product_{int(time.time())}'),
             cost_price=cost_price,
             fixed_costs=fixed_costs,
             available_units=available_units,
-            recommended_price=result['recommended_price'],
-            expected_profit=result['expected_profit'],
-            expected_units_sold=result.get('expected_units_sold'),
+            recommended_price=result['optimal_price']['price'],
+            expected_profit=result['optimal_price']['expected_profit'],
+            expected_units_sold=result['optimal_price'].get('expected_units_sold'),
             competitor_prices=competitor_prices,
             competitor_stats=result.get('competitor_stats'),
-            price_analysis=result.get('price_analysis'),
-            duration_ms=result.get('duration_ms', 0)
+            price_analysis=result.get('all_prices'),
+            duration_ms=duration_ms
         )
         db.session.add(optimization)
         db.session.commit()
-        
-        # Add the database ID to result
         result['id'] = optimization.id
     except Exception as e:
         db.session.rollback()
         print(f"Database error: {e}")
-        # Continue even if database fails
-    
+
     return jsonify(result)
 
-
-# ------------------------------ SAMPLE / SORT / SEARCH ------------------------
 
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample():
@@ -455,7 +511,7 @@ def admin_status():
             <p>{str(e)}</p>
         </body>
         </html>
-        """, 500# ---------------------------- SAMPLE GENERATOR -------------------------
+        """, 500
 
 def generate_sample_data(base_price: float = 1500,
                          num_competitors: int = 50,
