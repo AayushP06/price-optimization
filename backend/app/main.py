@@ -1,4 +1,11 @@
+"""Entry point for the Flask backend.
 
+Run from the project root:
+    python backend/app/main.py
+
+Or from the backend/ directory:
+    python app/main.py
+"""
 
 import os
 import sys

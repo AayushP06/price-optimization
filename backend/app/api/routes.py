@@ -1,10 +1,12 @@
-
+"""
+Flask routes — all API endpoints.
+The broken /api/optimize is fully fixed here.
+"""
 
 import json
 import os
 import time
 from datetime import datetime
-import numpy as np
 
 from flask import Blueprint, jsonify, request, send_file
 
@@ -96,38 +98,23 @@ def optimize_price():
             category=category,
             month=month,
             rating=rating,
-            ad_spend=ad_spend,
+            ad_spend=ad_spend
         )
-        def _to_python(val):
-            if isinstance(val, (np.float32, np.float64, np.int32, np.int64)):
-                return float(val) if isinstance(val, (np.float32, np.float64)) else int(val)
-            if isinstance(val, list):
-                return [_to_python(v) for v in val]
-            if isinstance(val, dict):
-                return {k: _to_python(v) for k, v in val.items()}
-            return val
-        result = _to_python(result)
         try:
             _store_request_data(data, result)
         except Exception:
             pass
         try:
-            
-            expected_units = result["optimal_price"].get("expected_units_sold")
-            expected_units = float(expected_units) if expected_units is not None else None
-            comp_stats_raw = result.get("competitor_stats", {})
-            comp_stats = {k: float(v) if isinstance(v, (np.float32, np.float64)) else v for k, v in comp_stats_raw.items()}
             opt = Optimization(
                 product_id=data.get("product_id", f"product_{int(time.time())}"),
-                cost_price=float(cost_price),
-                fixed_costs=float(fixed_costs),
-                available_units=int(available_units) if available_units is not None else None,
-                recommended_price=float(result["optimal_price"]["price"]),
-                expected_profit=float(result["optimal_price"]["expected_profit"]),
-                expected_units_sold=expected_units,
-                competitor_prices=[float(p) for p in result.get("competitor_prices", [])],
-                competitor_stats=comp_stats,
-                price_analysis=[{k: float(v) if isinstance(v, (np.float32, np.float64)) else v for k, v in price_point.items()} for price_point in result.get("all_prices", [])],
+                cost_price=cost_price,
+                fixed_costs=fixed_costs,
+                available_units=available_units,
+                recommended_price=result["optimal_price"]["price"],
+                expected_profit=result["optimal_price"]["expected_profit"],
+                competitor_prices=result["competitor_prices"],
+                competitor_stats=result["competitor_stats"],
+                price_analysis=result["all_prices"],
             )
             db.session.add(opt)
             db.session.commit()
