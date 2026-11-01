@@ -1,20 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import PriceOptimizer from './components/PriceOptimizer';
-import ProfitChart from './components/ProfitChart';
 import Results from './components/Results';
 import Footer from './components/Footer';
 
 function App() {
-  const [chartData, setChartData] = useState(null);
-  const [optimalPrice, setOptimalPrice] = useState(null);
-
-  const handleOptimize = (data) => {
-    setChartData(data);
-    setOptimalPrice(data?.optimal_price?.price);
-  };
-
   // Smooth scroll handler
   React.useEffect(() => {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -53,8 +44,7 @@ function App() {
     <div className="App">
       <Navbar />
       <Hero />
-      <PriceOptimizer onOptimize={handleOptimize} />
-      <ProfitChart data={chartData} optimalPrice={optimalPrice} />
+      <PriceOptimizer />
       <Results />
       <Footer />
     </div>

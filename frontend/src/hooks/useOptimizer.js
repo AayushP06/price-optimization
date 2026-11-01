@@ -14,18 +14,21 @@ export function useOptimizer() {
   const [stale, setStale] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
     setStale(Boolean(result));
     setError(null);
+    setFieldErrors({});
   }
 
   async function submit(event) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setFieldErrors({});
     const prices = form.competitor_prices.split(/[\s,]+/).filter(Boolean).map(Number);
     const payload = {
       ...form,
@@ -41,10 +44,11 @@ export function useOptimizer() {
       setStale(false);
     } catch (submissionError) {
       setError(submissionError);
+      setFieldErrors(Object.fromEntries(Object.entries(submissionError.fields || {}).map(([key, messages]) => [key, Array.isArray(messages) ? messages.join(', ') : String(messages)])));
     } finally {
       setLoading(false);
     }
   }
 
-  return { form, result, stale, loading, error, updateField, submit };
+  return { form, setForm, result, setResult, stale, setStale, loading, error, fieldErrors, updateField, submit };
 }

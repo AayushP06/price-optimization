@@ -32,7 +32,7 @@ def optimize():
                 recommended_price=result["optimal_price"]["price"],
                 expected_profit=result["optimal_price"]["expected_profit"],
                 expected_units_sold=result["optimal_price"].get("expected_units_sold"),
-                competitor_prices=result["competitor_prices"], competitor_stats=result["competitor_stats"],
+                competitor_prices=result["competitor_prices"], competitor_stats={**result["competitor_stats"], "simulated": result["simulated_competitors"]},
                 price_analysis=result["all_prices"],
                 category=params["category"], month=params["month"], rating=params["rating"],
                 ad_spend=params["ad_spend"], method=result["method"],

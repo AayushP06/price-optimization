@@ -24,6 +24,13 @@ def run_optimization(params: dict) -> dict:
     result["max_markup_pct"] = params.get("max_markup_pct", 80)
     result["min_margin"] = result["min_markup_pct"]
     result["max_margin"] = result["max_markup_pct"]
+    result["cost_price"] = params["cost_price"]
+    result["fixed_costs"] = params.get("fixed_costs", 0)
+    result["category"] = params.get("category", "Electronics")
+    result["month"] = params.get("month", 6)
+    result["rating"] = params.get("rating", 4.2)
+    result["ad_spend"] = params.get("ad_spend", 1000)
+    result["available_units"] = params.get("available_units")
     price = result["optimal_price"]["price"]
     result["optimal_price"]["markup_pct"] = round((price - params["cost_price"]) / params["cost_price"] * 100, 2)
     result["optimal_price"]["margin_pct"] = result["optimal_price"]["margin"]
