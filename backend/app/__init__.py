@@ -46,4 +46,8 @@ def create_app(config_class=Config):
     from app.api import register_blueprints
     register_blueprints(app)
 
+    # Verify/load model files and the saved feature contract during app startup.
+    from app.services.xgb_optimizer import get_ml_optimizer
+    get_ml_optimizer()
+
     return app

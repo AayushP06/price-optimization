@@ -9,6 +9,7 @@ Or from the backend/ directory:
 
 import os
 import sys
+import logging
 
 
 _backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,17 +23,6 @@ app = create_app()
 
 if __name__ == "__main__":
     port = Config.PORT
-    print("\n" + "=" * 60)
-    print("  PRICE OPTIMIZATION API SERVER")
-    print("=" * 60)
-    print("\nAvailable Endpoints:")
-    print("  POST /api/optimize        - Run complete optimization")
-    print("  POST /api/generate-sample - Generate sample competitor data")
-    print("  POST /api/sort            - Sort prices using Quick Sort")
-    print("  POST /api/search          - Search using Binary Search")
-    print("  GET  /api/health          - Health check")
-    print("  GET  /api/history         - Optimization history")
-    print("  GET  /api/stats           - Statistics")
-    print(f"\nStarting server on http://localhost:{port}")
-    print("=" * 60 + "\n")
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger(__name__).info("Starting price optimization server on port %s", port)
     app.run(host="0.0.0.0", port=port, debug=Config.DEBUG)

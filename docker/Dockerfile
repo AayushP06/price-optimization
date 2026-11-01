@@ -1,27 +1,18 @@
-# Use official Python 3.11 slim image
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.11-slim
-
 WORKDIR /app
-
-# Install Python dependencies
 COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy backend source
 COPY backend/ ./backend/
-
-# Copy the static HTML frontend (served by Flask at /)
-COPY price-optimization-website.html ./price-optimization-website.html
-
-# Copy stored_data.json if it exists (optional)
-COPY stored_data.json* ./
-
-# Expose Flask port
-EXPOSE 5000
-
-# Environment defaults (override via docker run -e or .env)
+COPY ml-model/xgb_model.json ml-model/feature_columns.json ./ml-model/
+COPY --from=frontend-build /frontend/dist ./frontend/dist
+WORKDIR /app/backend
 ENV PORT=5000
-ENV DEBUG=False
-
-# Run the Flask server
-CMD ["python", "backend/app/main.py"]
+EXPOSE 5000
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} app.main:app"]
