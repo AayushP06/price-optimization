@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import PriceOptimizer from './components/PriceOptimizer';
 import Results from './components/Results';
 import Faq from './components/Faq';
+import HistoryDrawer from './components/HistoryDrawer';
+import { useOptimizer } from './hooks/useOptimizer';
 import Footer from './components/Footer';
 
 function App() {
+  const optimizer = useOptimizer();
+  const [historyOpen, setHistoryOpen] = useState(false);
   // Smooth scroll handler
   React.useEffect(() => {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -43,11 +47,12 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar />
+      <Navbar onOpenHistory={() => setHistoryOpen(true)} />
       <Hero />
-      <PriceOptimizer />
+      <PriceOptimizer optimizer={optimizer} />
       <Results />
       <Faq />
+      {historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} onLoad={(form, result) => { optimizer.setForm(form); optimizer.setResult(result); optimizer.setStale(false); optimizer.setError(null); }} />}
       <Footer />
     </div>
   );

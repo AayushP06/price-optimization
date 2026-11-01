@@ -8,7 +8,14 @@ export default function ProfitCurve({ points = [], optimalPrice, minPrice, maxPr
   const optimal = points.reduce((best, point) => Math.abs(point.price - optimalPrice) < Math.abs(best.price - optimalPrice) ? point : best, points[0]);
   const peak = points.reduce((best, point) => Number(point.expected_profit) > Number(best.expected_profit) ? point : best, points[0]);
   const summary = `Profit peaks at ${rupees(peak.price)} with expected profit ${rupees(peak.expected_profit)}.`;
-  const data = points.map((point, index) => ({ ...point, compare_profit: comparisonPoints?.[index]?.expected_profit }));
+  const merged = new Map();
+  [...points, ...(comparisonPoints || [])].forEach((point) => {
+    const key = Number(point.price);
+    merged.set(key, { ...merged.get(key), price: key });
+  });
+  points.forEach((point) => { merged.get(Number(point.price)).expected_profit = point.expected_profit; });
+  (comparisonPoints || []).forEach((point) => { merged.get(Number(point.price)).compare_profit = point.expected_profit; });
+  const data = [...merged.values()].sort((a, b) => a.price - b.price);
   return <section className="profit-curve" aria-label="Profit curve">
     <div className="subsection-title"><h3>Expected profit by price</h3><span>{points.length} price points evaluated</span></div>
     <p className="chart-summary">{summary}</p>

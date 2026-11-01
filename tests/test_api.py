@@ -160,6 +160,10 @@ def test_history_endpoint(client):
     assert history["count"] == 1
     assert history["data"][0]["product_name"] == "Widget"
     assert history["data"][0]["quality"] == "premium"
+    assert history["data"][0]["all_prices"]
+    assert history["data"][0]["competitor_stats"]["simulated"] is False
+    assert history["data"][0]["min_markup_pct"] == 5
+    assert history["data"][0]["max_markup_pct"] == 80
 
 
 def test_admin_rejects_missing_token(client):

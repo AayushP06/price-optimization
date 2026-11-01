@@ -18,7 +18,17 @@ const sampleResult = {
 
 describe('PriceOptimizer', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => sampleResult })));
-  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+  beforeEach(() => {
+    const values = new Map();
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, String(value)),
+      removeItem: (key) => values.delete(key),
+      clear: () => values.clear(),
+    } });
+    window.localStorage.clear();
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   it('submits the form and renders recommendation, metrics, and condition flags', async () => {
     render(<PriceOptimizer />);
@@ -52,6 +62,26 @@ describe('PriceOptimizer', () => {
     const submitted = JSON.parse(fetch.mock.calls[0][1].body);
     expect(submitted.category).toBe('Electronics');
     expect(submitted.cost_price).toBe(1000);
+  });
+
+  it('saves, applies, and deletes a preset through the UI', async () => {
+    render(<PriceOptimizer />);
+    fireEvent.change(screen.getByLabelText('Name this preset'), { target: { value: 'My item' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save form' }));
+    expect(await screen.findByText('Preset saved on this device.')).toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem('priceoptimizer.saved-presets.v1'))[0].name).toBe('My item');
+    fireEvent.click(screen.getByRole('button', { name: 'My item' }));
+    await screen.findByText('₹125');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete My item' }));
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem('priceoptimizer.saved-presets.v1'))).toEqual([]));
+  });
+
+  it('shows a readable message when browser storage throws', async () => {
+    render(<PriceOptimizer />);
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    fireEvent.change(screen.getByLabelText('Name this preset'), { target: { value: 'My item' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save form' }));
+    expect(await screen.findByText('Could not save presets. Check browser storage availability.')).toBeInTheDocument();
   });
 });
 

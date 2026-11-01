@@ -1,6 +1,7 @@
 import React from 'react';
 import MarketPosition from './MarketPosition';
 import ProfitCurve from './ProfitCurve';
+import { downloadResultCsv } from '../utils/reportCsv';
 
 const rupees = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
@@ -62,7 +63,7 @@ export default function ResultCard({ result, form, loading, error, stale }) {
   ];
 
   return <section id="optimizer-results" className={`result-container ${panelClass}`} aria-label="Optimization results" aria-live="polite" aria-busy={loading}>
-    <header className="result-title"><div><p className="eyebrow">Recommended price · {result.quality || 'standard'} tier</p><h2>{result.product_name || form?.product_name || 'Product'}</h2></div>{stale && <span className="stale-badge">Inputs changed · result is stale</span>}</header>
+    <header className="result-title"><div><p className="eyebrow">Recommended price · {result.quality || 'standard'} tier</p><h2>{result.product_name || form?.product_name || 'Product'}</h2></div><div className="result-actions">{stale && <span className="stale-badge">Inputs changed · result is stale</span>}<button type="button" className="text-button" onClick={() => downloadResultCsv(result, form)}>Download report</button></div></header>
     {error && <p className="inline-error" role="alert">{error.message}</p>}
     {loading && <div className="refreshing-note" role="status">Updating recommendation…</div>}
     <p className="recommended-price">{rupees(optimum.price)}</p>

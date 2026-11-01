@@ -24,3 +24,10 @@ export async function optimizePrice(payload) {
   if (!body.success) throw new ApiError(body.error || 'Optimization failed.');
   return body;
 }
+
+export async function getHistory(limit = 100) {
+  const response = await fetch(`/api/history?limit=${encodeURIComponent(limit)}`);
+  const body = await response.json();
+  if (!response.ok) throw new ApiError(body.error || 'Could not load optimization history.');
+  return body.data || [];
+}

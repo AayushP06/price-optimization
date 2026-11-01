@@ -54,5 +54,5 @@ export function useOptimizer() {
     return run(form);
   }
 
-  return { form, setForm, result, setResult, stale, setStale, loading, error, fieldErrors, updateField, submit, run };
+  return { form, setForm, result, setResult, stale, setStale, loading, error, setError, fieldErrors, updateField, submit, run };
 }
