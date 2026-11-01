@@ -22,7 +22,7 @@ def create_app(config_class=Config):
         db.create_all()
 
     # Register blueprints
-    from app.api.routes import api_bp
-    app.register_blueprint(api_bp)
+    from app.api import register_blueprints
+    register_blueprints(app)
 
     return app
