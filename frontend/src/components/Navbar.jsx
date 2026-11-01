@@ -5,9 +5,9 @@ const Navbar = () => {
   const close = () => setMenuOpen(false);
 
   return (
-    <nav className="app-nav">
+    <nav>
       <div className="container">
-        <div className="logo">PriceOptimizer</div>
+        <a className="logo" href="#home"><span className="logo-mark">PO</span>PriceOptimizer</a>
 
         <div
           className={`menu-toggle ${menuOpen ? 'active' : ''}`}
@@ -20,8 +20,13 @@ const Navbar = () => {
         </div>
 
         <ul className={menuOpen ? 'active' : ''} id="navMenu">
+          <li><a href="#home"     onClick={close}>Home</a></li>
           <li><a href="#optimize" onClick={close}>Optimize</a></li>
-          <li><a href="#optimizer-results" onClick={close}>Results</a></li>
+          <li><a href="#insights" onClick={close}>Insights</a></li>
+          <li><a href="#results"  onClick={close}>Results</a></li>
+          <li>
+            <a href="#optimize" onClick={close}>Try Free →</a>
+          </li>
         </ul>
       </div>
     </nav>
