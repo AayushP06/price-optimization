@@ -1,6 +1,8 @@
 """Flask app factory."""
 
-from flask import Flask
+import os
+
+from flask import Flask, abort, send_from_directory
 from flask_cors import CORS
 
 from app.api.core.config import Config
@@ -8,8 +10,27 @@ from app.database.db import db
 
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder=None)
     app.config.from_object(config_class)
+
+    frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+
+    @app.get("/")
+    def frontend_index():
+        if not os.path.isfile(os.path.join(frontend_dist, "index.html")):
+            abort(404)
+        return send_from_directory(frontend_dist, "index.html")
+
+    @app.get("/<path:filename>")
+    def frontend_assets(filename):
+        if not os.path.isfile(os.path.join(frontend_dist, "index.html")):
+            abort(404)
+        target = os.path.join(frontend_dist, filename)
+        if os.path.isfile(target):
+            return send_from_directory(frontend_dist, filename)
+        if os.path.splitext(filename)[1]:
+            abort(404)
+        return send_from_directory(frontend_dist, "index.html")
 
     # Extensions
     CORS(app)

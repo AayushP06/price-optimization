@@ -19,6 +19,7 @@ def run_optimization(params: dict) -> dict:
     # JSON columns cannot serialize directly.
     result = json.loads(json.dumps(result, default=lambda value: value.item()))
     result["quality"] = params.get("quality", "standard")
+    result["product_name"] = params.get("product_name") or "Product"
     result["min_markup_pct"] = params.get("min_markup_pct", 5)
     result["max_markup_pct"] = params.get("max_markup_pct", 80)
     result["min_margin"] = result["min_markup_pct"]
