@@ -9,15 +9,18 @@ const Navbar = () => {
       <div className="container">
         <a className="logo" href="#home"><span className="logo-mark">PO</span>PriceOptimizer</a>
 
-        <div
+        <button
           className={`menu-toggle ${menuOpen ? 'active' : ''}`}
-          onClick={() => setMenuOpen(v => !v)}
-          aria-label="Toggle menu"
+          type="button"
+          onClick={() => setMenuOpen((current) => !current)}
+          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={menuOpen}
+          aria-controls="navMenu"
         >
           <span />
           <span />
           <span />
-        </div>
+        </button>
 
         <ul className={menuOpen ? 'active' : ''} id="navMenu">
           <li><a href="#home"     onClick={close}>Home</a></li>

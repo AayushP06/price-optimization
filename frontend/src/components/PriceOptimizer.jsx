@@ -121,7 +121,7 @@ const PriceOptimizer = ({ onOptimize }) => {
       </p>
 
       <div className="card">
-        <form id="optForm" className="price-form" onSubmit={handleSubmit}>
+        <form id="optForm" className="price-form" onSubmit={handleSubmit} aria-busy={loading}>
           <div className="form-section form-wide">
             <div className="form-section-heading"><span>01</span><div><h3>Product & costs</h3><p>Start with the item and what it costs you.</p></div></div>
             <div className="field-grid">
@@ -153,17 +153,25 @@ const PriceOptimizer = ({ onOptimize }) => {
           </details>
 
           {error && <div className="form-error form-wide" role="alert">{error}</div>}
-          <button type="submit" className="btn btn-primary form-wide" disabled={loading}>{loading ? 'Calculating…' : 'Get my price recommendation'}</button>
+          <button
+            type="submit"
+            className={`btn btn-primary form-wide${loading ? ' is-loading' : ''}`}
+            disabled={loading}
+          >
+            <span>{loading ? 'Calculating…' : 'Get my price recommendation'}</span>
+          </button>
         </form>
 
-        <div id="optOutput" className="result-container">
+        <div id="optOutput" className="result-container" aria-live="polite" aria-atomic="true">
           {loading && (
             <div className="result-empty result-loading" role="status"><span className="eyebrow">Working on it</span><strong>Comparing price points…</strong><p>Estimating expected profit from your cost and market inputs.</p></div>
           )}
           
-          {error && (
-            <div className="error">
-              <strong>❌ Error:</strong> {error}
+          {error && !result && (
+            <div className="result-empty result-error">
+              <span className="eyebrow">ANALYSIS PAUSED</span>
+              <strong>We couldn&apos;t complete this run.</strong>
+              <p>Review the message beside the form, then try again.</p>
             </div>
           )}
           
