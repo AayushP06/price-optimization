@@ -1,13 +1,10 @@
 import React from 'react';
-import { useOptimizer } from '../hooks/useOptimizer';
 import ProductForm from './ProductForm';
 import ResultCard from './ResultCard';
 import SampleProducts from './SampleProducts';
 import { useSavedPresets } from '../hooks/useSavedPresets';
 
-export default function PriceOptimizer({ optimizer: sharedOptimizer } = {}) {
-  const localOptimizer = useOptimizer();
-  const optimizer = sharedOptimizer || localOptimizer;
+export default function PriceOptimizer({ optimizer }) {
   const savedPresets = useSavedPresets();
   return <section id="optimize" className="optimizer-section">
     <header className="section-heading"><p className="eyebrow">Price recommendation</p><h2>Set your market inputs</h2><p className="section-subtitle">Use your costs and competitor data to compare price points.</p></header>

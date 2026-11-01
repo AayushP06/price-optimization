@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { optimizePrice } from '../api/client';
 
 const initialForm = {
@@ -15,8 +15,10 @@ export function useOptimizer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const revision = useRef(0);
 
   function updateField(event) {
+    revision.current += 1;
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
     setStale(Boolean(result));
@@ -25,7 +27,9 @@ export function useOptimizer() {
   }
 
   async function run(candidateForm = form) {
+    const submittedRevision = revision.current;
     setLoading(true);
+    setStale(Boolean(result));
     setError(null);
     setFieldErrors({});
     const prices = candidateForm.competitor_prices.split(/[\s,]+/).filter(Boolean).map(Number);
@@ -40,10 +44,13 @@ export function useOptimizer() {
     };
     try {
       setResult(await optimizePrice(payload));
-      setStale(false);
+      setStale(revision.current !== submittedRevision);
     } catch (submissionError) {
       setError(submissionError);
-      setFieldErrors(Object.fromEntries(Object.entries(submissionError.fields || {}).map(([key, messages]) => [key, Array.isArray(messages) ? messages.join(', ') : String(messages)])));
+      setFieldErrors(Object.fromEntries(Object.entries(submissionError.fields || {}).map(([key, messages]) => {
+        const field = key.startsWith('competitor_prices') ? 'competitor_prices' : ['min_markup_pct', 'max_markup_pct', 'cost_price', 'fixed_costs', 'category', 'month', 'rating', 'ad_spend', 'available_units', 'num_competitors', 'quality', 'product_name'].includes(key) ? key : 'form';
+        return [field, Array.isArray(messages) ? messages.join(', ') : String(messages)];
+      })));
     } finally {
       setLoading(false);
     }

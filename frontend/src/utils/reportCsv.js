@@ -1,5 +1,6 @@
 function csvCell(value) {
-  const text = String(value ?? '');
+  let text = String(value ?? '');
+  if (/^\s*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
 
@@ -19,6 +20,7 @@ export function makeResultCsv(result, form = {}) {
     ['Month', result?.month ?? form.month], ['Rating', result?.rating ?? form.rating],
     ['Ad spend (INR)', result?.ad_spend ?? form.ad_spend], ['Available units', result?.available_units ?? form.available_units],
     ['Competitor prices (INR)', (result?.competitor_prices || []).join('; ')],
+    ['Price curve (price INR | markup % | margin % | expected profit INR)', (result?.all_prices || []).map((point) => `${point.price} | ${point.markup_pct ?? ''} | ${point.margin_pct ?? ''} | ${point.expected_profit}`).join('; ')],
     ['Warnings', (result?.warnings || []).join('; ')],
   ];
   return [['Field', 'Value'], ...fields].map((row) => row.map(csvCell).join(',')).join('\r\n');

@@ -24,8 +24,20 @@ export default function HistoryDrawer({ onClose, onLoad }) {
   useEffect(() => {
     const previous = document.activeElement;
     document.body.classList.add('drawer-open');
+    document.querySelector('.history-drawer .icon-button')?.focus();
     return () => { document.body.classList.remove('drawer-open'); previous?.focus?.(); };
   }, []);
+
+  const trapDialogKeys = (event) => {
+    if (event.key === 'Escape') { onClose(); return; }
+    if (event.key !== 'Tab') return;
+    const focusable = [...event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
 
   const toggleCompare = (record) => setSelected((current) => current.some((item) => item.id === record.id)
     ? current.filter((item) => item.id !== record.id)
@@ -65,7 +77,7 @@ export default function HistoryDrawer({ onClose, onLoad }) {
   };
 
   return <div className="drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="history-title">
+    <aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="history-title" onKeyDown={trapDialogKeys}>
       <header><div><p className="eyebrow">Saved recommendations</p><h2 id="history-title">Optimization history</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Close history"><X size={20} /></button></header>
       <p className="drawer-hint">Select up to two runs to compare. Choose a row to load its inputs and result.</p>
       {loading && <div className="history-loading" role="status">Loading optimization history…</div>}

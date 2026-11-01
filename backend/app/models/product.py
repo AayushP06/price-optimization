@@ -53,7 +53,7 @@ class Optimization(db.Model):
             "quality": self.quality,
             "competitor_stats": self.competitor_stats,
             "all_prices": self.price_analysis,
-            "simulated_competitors": bool((self.competitor_stats or {}).get("simulated", False)),
+            "simulated_competitors": (self.competitor_stats or {}).get("simulated"),
             "min_markup_pct": round((self.price_analysis[0]["price"] / self.cost_price - 1) * 100, 2) if self.price_analysis and self.cost_price else None,
             "max_markup_pct": round((self.price_analysis[-1]["price"] / self.cost_price - 1) * 100, 2) if self.price_analysis and self.cost_price else None,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,

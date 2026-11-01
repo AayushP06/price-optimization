@@ -9,4 +9,9 @@ describe('result CSV report', () => {
     expect(csv).toContain('"Quality tier","standard"');
     expect(csv).toContain('"Warnings","Needs, review"');
   });
+
+  it('neutralizes spreadsheet formulas in user supplied text', () => {
+    const csv = makeResultCsv({ product_name: '=HYPERLINK("https://example.invalid")' });
+    expect(csv).toContain("\"Product\",\"'=HYPERLINK(\"\"https://example.invalid\"\")\"");
+  });
 });

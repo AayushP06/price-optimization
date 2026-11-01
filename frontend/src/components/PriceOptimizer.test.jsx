@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PriceOptimizer from './PriceOptimizer';
 import { resultFlags } from './ResultCard';
+import { useOptimizer } from '../hooks/useOptimizer';
 
 vi.mock('./ProfitCurve', () => ({ default: () => <div>Profit curve preview</div> }));
 
@@ -15,6 +16,10 @@ const sampleResult = {
   competitor_prices: [110, 115, 120, 130, 150],
   all_prices: [{ price: 105, expected_profit: 50 }, { price: 125, expected_profit: 100 }, { price: 180, expected_profit: 0 }],
 };
+
+function OptimizerHarness() {
+  return <PriceOptimizer optimizer={useOptimizer()} />;
+}
 
 describe('PriceOptimizer', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => sampleResult })));
@@ -31,7 +36,7 @@ describe('PriceOptimizer', () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   it('submits the form and renders recommendation, metrics, and condition flags', async () => {
-    render(<PriceOptimizer />);
+    render(<OptimizerHarness />);
     fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Test item' } });
     fireEvent.click(screen.getByRole('button', { name: 'Get my price recommendation' }));
     await waitFor(() => expect(screen.getByText('₹125')).toBeInTheDocument());
@@ -45,7 +50,7 @@ describe('PriceOptimizer', () => {
   });
 
   it('marks the previous recommendation stale after input changes', async () => {
-    render(<PriceOptimizer />);
+    render(<OptimizerHarness />);
     fireEvent.click(screen.getByRole('button', { name: 'Get my price recommendation' }));
     await screen.findByText('₹125');
     fireEvent.change(screen.getByLabelText('Unit cost (₹)'), { target: { value: '1100' } });
@@ -53,8 +58,18 @@ describe('PriceOptimizer', () => {
     expect(screen.getByText('₹125')).toBeInTheDocument();
   });
 
+  it('keeps a response stale if the inputs change while it is in flight', async () => {
+    let resolveResponse;
+    fetch.mockReturnValue(new Promise((resolve) => { resolveResponse = resolve; }));
+    render(<OptimizerHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Get my price recommendation' }));
+    fireEvent.change(screen.getByLabelText('Unit cost (₹)'), { target: { value: '1200' } });
+    resolveResponse({ ok: true, json: async () => sampleResult });
+    expect(await screen.findByText('Inputs changed · result is stale')).toBeInTheDocument();
+  });
+
   it('fills the selected sample and runs the optimizer', async () => {
-    render(<PriceOptimizer />);
+    render(<OptimizerHarness />);
     fireEvent.click(screen.getByRole('button', { name: /Wireless Earbuds/ }));
     await waitFor(() => expect(screen.getByText('₹125')).toBeInTheDocument());
     expect(screen.getByLabelText('Product name')).toHaveValue('Wireless Earbuds');
@@ -65,7 +80,7 @@ describe('PriceOptimizer', () => {
   });
 
   it('saves, applies, and deletes a preset through the UI', async () => {
-    render(<PriceOptimizer />);
+    render(<OptimizerHarness />);
     fireEvent.change(screen.getByLabelText('Name this preset'), { target: { value: 'My item' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save form' }));
     expect(await screen.findByText('Preset saved on this device.')).toBeInTheDocument();
@@ -77,11 +92,19 @@ describe('PriceOptimizer', () => {
   });
 
   it('shows a readable message when browser storage throws', async () => {
-    render(<PriceOptimizer />);
+    render(<OptimizerHarness />);
     vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
     fireEvent.change(screen.getByLabelText('Name this preset'), { target: { value: 'My item' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save form' }));
     expect(await screen.findByText('Could not save presets. Check browser storage availability.')).toBeInTheDocument();
+  });
+
+  it('renders backend validation messages next to the matching field', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'Please correct the highlighted fields.', errors: { cost_price: ['Input should be greater than 0'] } }) }));
+    render(<OptimizerHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Get my price recommendation' }));
+    expect(await screen.findByText('Input should be greater than 0')).toBeInTheDocument();
+    expect(screen.getByLabelText('Unit cost (₹)')).toHaveAttribute('aria-invalid', 'true');
   });
 });
 

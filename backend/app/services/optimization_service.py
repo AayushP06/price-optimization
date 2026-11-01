@@ -37,6 +37,7 @@ def run_optimization(params: dict) -> dict:
     result["optimal_price"]["markup"] = result["optimal_price"]["markup_pct"]
     for point in result["all_prices"]:
         point["margin_pct"] = round(max(0, point["price"] - params["cost_price"] - params.get("fixed_costs", 0)) / point["price"] * 100, 2)
+        point["markup_pct"] = round((point["price"] - params["cost_price"]) / params["cost_price"] * 100, 2)
     result["warnings"] = []
     if result["method"] == "heuristic-fallback":
         result["warnings"].append("The XGBoost model is unavailable; a heuristic fallback was used.")

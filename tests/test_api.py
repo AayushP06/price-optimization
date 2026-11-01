@@ -86,6 +86,7 @@ def test_optimize_basic(client):
     assert data["success"] is True
     assert "optimal_price" in data
     assert data["optimal_price"]["price"] > 1000
+    assert "markup_pct" in data["all_prices"][0]
 
 
 def test_optimize_invalid_cost(client):

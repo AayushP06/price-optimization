@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import MarketPosition from './MarketPosition';
-import ProfitCurve from './ProfitCurve';
 import { downloadResultCsv } from '../utils/reportCsv';
+
+const ProfitCurve = lazy(() => import('./ProfitCurve'));
 
 const rupees = (value) => `₹${Number(value ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
@@ -38,7 +39,7 @@ export function resultFlags(result, form = {}) {
 export default function ResultCard({ result, form, loading, error, stale }) {
   const panelClass = `result-panel${stale ? ' is-stale' : ''}`;
   if (!result) return <section className="result-container" aria-live="polite" aria-label="Optimization result">
-    {loading ? <div className="result-skeleton" role="status" aria-label="Loading recommendation"><span /><span /><span /><span /></div> : <div className="result-empty"><span className="eyebrow">Example · illustrative only</span><strong>Review price and profit together.</strong><p>Run an optimization to see your recommendation, market position, and profit curve here.</p><div className="example-result"><span>Suggested price</span><strong>₹1,249</strong><span>Expected profit · sample</span><strong>₹8,420</strong></div><small>Example values are not a model result.</small></div>}
+    {loading ? <div className="result-skeleton" role="status" aria-label="Loading recommendation"><span /><span /><span /><span /></div> : <div className="result-empty"><span className="eyebrow">Example · preview</span><strong>Review price and profit together.</strong><p>Run an optimization to see your recommendation, market position, and profit curve here.</p><div className="example-result"><span>Suggested price</span><strong>₹—</strong><span>Expected profit</span><strong>—</strong></div><small>Result values populate after an optimization.</small></div>}
     {error && <p className="inline-error" role="alert">{error.message}</p>}
   </section>;
 
@@ -50,7 +51,7 @@ export default function ResultCard({ result, form, loading, error, stale }) {
   const profitPerUnit = Number(optimum.profit_per_unit ?? (Number(optimum.price) - cost - Number(result.fixed_costs ?? form?.fixed_costs ?? 0)));
   const markup = Number(optimum.markup_pct ?? (cost ? (Number(optimum.price) - cost) / cost * 100 : 0));
   const margin = Number(optimum.margin_pct ?? optimum.margin ?? 0);
-  const simulated = result.simulated_competitors ? 'Simulated' : 'User supplied';
+  const simulated = result.simulated_competitors === true ? 'Simulated' : result.simulated_competitors === false ? 'User supplied' : 'Source unavailable';
   const assumptions = [
     ['Method', result.method || 'Not specified'],
     ['Competitor prices', `${result.competitor_stats?.count ?? 0} · ${simulated.toLowerCase()}`],
@@ -77,7 +78,7 @@ export default function ResultCard({ result, form, loading, error, stale }) {
     </div>
     {flags.length > 0 && <ul className="result-flags" aria-label="Recommendation notes">{flags.map((flag, index) => <li className={`flag flag-${flag.severity}`} key={`${flag.severity}-${index}`}><span aria-hidden="true">{flag.severity === 'success' ? '✓' : flag.severity === 'warning' ? '!' : 'i'}</span>{flag.text}</li>)}</ul>}
     <MarketPosition stats={result.competitor_stats} prices={result.competitor_prices} optimalPrice={optimum.price} />
-    <ProfitCurve points={result.all_prices} optimalPrice={optimum.price} minPrice={cost * (1 + Number(result.min_markup_pct ?? form?.min_markup_pct ?? 5) / 100)} maxPrice={cost * (1 + Number(result.max_markup_pct ?? form?.max_markup_pct ?? 80) / 100)} />
+    <Suspense fallback={<div className="profit-chart-skeleton" role="status" aria-label="Loading profit curve"><span /><span /><span /></div>}><ProfitCurve points={result.all_prices} optimalPrice={optimum.price} costPrice={cost} minPrice={cost * (1 + Number(result.min_markup_pct ?? form?.min_markup_pct ?? 5) / 100)} maxPrice={cost * (1 + Number(result.max_markup_pct ?? form?.max_markup_pct ?? 80) / 100)} loading={loading} /></Suspense>
     <details className="assumptions-panel"><summary>Method & assumptions</summary><dl>{assumptions.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><div className="formula-notes"><p><strong>Markup:</strong> (price − cost) ÷ cost.</p><p><strong>Margin:</strong> (price − cost − fixed costs) ÷ price.</p><p>Quality is saved as metadata only and is not used by the model.</p></div></details>
   </section>;
 }
