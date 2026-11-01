@@ -42,6 +42,17 @@ describe('PriceOptimizer', () => {
     expect(screen.getByText('Inputs changed · result is stale')).toBeInTheDocument();
     expect(screen.getByText('₹125')).toBeInTheDocument();
   });
+
+  it('fills the selected sample and runs the optimizer', async () => {
+    render(<PriceOptimizer />);
+    fireEvent.click(screen.getByRole('button', { name: /Wireless Earbuds/ }));
+    await waitFor(() => expect(screen.getByText('₹125')).toBeInTheDocument());
+    expect(screen.getByLabelText('Product name')).toHaveValue('Wireless Earbuds');
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const submitted = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(submitted.category).toBe('Electronics');
+    expect(submitted.cost_price).toBe(1000);
+  });
 });
 
 describe('result flags', () => {

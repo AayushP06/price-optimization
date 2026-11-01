@@ -24,20 +24,19 @@ export function useOptimizer() {
     setFieldErrors({});
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function run(candidateForm = form) {
     setLoading(true);
     setError(null);
     setFieldErrors({});
-    const prices = form.competitor_prices.split(/[\s,]+/).filter(Boolean).map(Number);
+    const prices = candidateForm.competitor_prices.split(/[\s,]+/).filter(Boolean).map(Number);
     const payload = {
-      ...form,
-      cost_price: Number(form.cost_price), fixed_costs: Number(form.fixed_costs || 0),
-      available_units: form.available_units === '' ? null : Number(form.available_units),
-      num_competitors: prices.length ? undefined : Number(form.num_competitors),
-      competitor_prices: prices, month: Number(form.month), rating: Number(form.rating),
-      ad_spend: Number(form.ad_spend), min_markup_pct: Number(form.min_markup_pct),
-      max_markup_pct: Number(form.max_markup_pct),
+      ...candidateForm,
+      cost_price: Number(candidateForm.cost_price), fixed_costs: Number(candidateForm.fixed_costs || 0),
+      available_units: candidateForm.available_units === '' ? null : Number(candidateForm.available_units),
+      num_competitors: prices.length ? undefined : Number(candidateForm.num_competitors),
+      competitor_prices: prices, month: Number(candidateForm.month), rating: Number(candidateForm.rating),
+      ad_spend: Number(candidateForm.ad_spend), min_markup_pct: Number(candidateForm.min_markup_pct),
+      max_markup_pct: Number(candidateForm.max_markup_pct),
     };
     try {
       setResult(await optimizePrice(payload));
@@ -50,5 +49,10 @@ export function useOptimizer() {
     }
   }
 
-  return { form, setForm, result, setResult, stale, setStale, loading, error, fieldErrors, updateField, submit };
+  function submit(event) {
+    event.preventDefault();
+    return run(form);
+  }
+
+  return { form, setForm, result, setResult, stale, setStale, loading, error, fieldErrors, updateField, submit, run };
 }
