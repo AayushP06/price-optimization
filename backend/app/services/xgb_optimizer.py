@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import os
-import sys
 import random
+import json
+import logging
 from typing import List, Optional
 
-import joblib
 import numpy as np
 import xgboost as xgb
 
@@ -13,19 +13,28 @@ _SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.abspath(os.path.join(_SERVICE_DIR, "..", "..", ".."))
 _ML_DIR = os.path.join(_PROJECT_ROOT, "ml-model")
 
-MODEL_PATH = os.path.join(_ML_DIR, "xgb_model.pkl")
+MODEL_PATH = os.path.join(_ML_DIR, "xgb_model.json")
+FEATURE_PATH = os.path.join(_ML_DIR, "feature_columns.json")
+FEATURE_COLUMNS = ["cost_price", "competitor_min", "competitor_median", "competitor_max", "price", "margin_pct", "price_to_competitor_median", "competitor_position", "category_encoded", "month", "rating", "ad_spend"]
+logger = logging.getLogger(__name__)
 
 class XGBPriceOptimizer:
     def __init__(self, model_path: str = MODEL_PATH):
         self._model: Optional[xgb.XGBRegressor] = None
         self._loaded: bool = False
 
-        if os.path.exists(model_path):
+        if os.path.exists(model_path) and os.path.exists(FEATURE_PATH):
             try:
-                self._model = joblib.load(model_path)
+                with open(FEATURE_PATH, encoding="utf-8") as feature_file:
+                    if json.load(feature_file) != FEATURE_COLUMNS:
+                        raise ValueError("Saved model feature list does not match FEATURE_COLUMNS")
+                self._model = xgb.XGBRegressor()
+                self._model.load_model(model_path)
                 self._loaded = True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Unable to load XGBoost model; using heuristic fallback: %s", exc)
+        else:
+            logger.warning("XGBoost model or feature list is missing; using heuristic fallback")
 
     @property
     def is_ml_ready(self) -> bool:
@@ -42,6 +51,7 @@ class XGBPriceOptimizer:
         month: int = 6,
         rating: float = 4.2,
         ad_spend: float = 1000.0,
+        available_units: int = None,
     ) -> dict:
         
         comp = sorted(competitor_prices) if competitor_prices else \
@@ -68,6 +78,8 @@ class XGBPriceOptimizer:
             )
             expected_units = self._demand_score(best_price, c_min, c_max) * 100
             method = "heuristic-fallback"
+        if available_units is not None:
+            expected_units = min(expected_units, available_units)
 
         info = self._describe(best_price, cost_price, fixed_costs, c_min, c_max, expected_units)
 
@@ -128,20 +140,11 @@ class XGBPriceOptimizer:
             price_to_comp_med = p / c_med if c_med > 0 else 1.0
             comp_position = (p - c_min) / max(1e-9, c_max - c_min)
             
-            features.append([
-                cost,
-                c_min,
-                c_med,
-                c_max,
-                p,
-                margin_pct,
-                price_to_comp_med,
-                comp_position,
-                cat_enc,
-                month,
-                rating,
-                ad_spend
-            ])
+            row = {"cost_price": cost, "competitor_min": c_min, "competitor_median": c_med,
+                   "competitor_max": c_max, "price": p, "margin_pct": margin_pct,
+                   "price_to_competitor_median": price_to_comp_med, "competitor_position": comp_position,
+                   "category_encoded": cat_enc, "month": month, "rating": rating, "ad_spend": ad_spend}
+            features.append([row[column] for column in FEATURE_COLUMNS])
             
         X_infer = np.array(features)
         y_log_pred = self._model.predict(X_infer)
@@ -170,7 +173,7 @@ class XGBPriceOptimizer:
         self, cost: float, fixed: float,
         price_lo: float, price_hi: float,
         comp_min: float, comp_max: float,
-    ) -> float:
+    ) -> tuple[float, list[dict]]:
         best_price, best_profit = price_lo, -1e9
         all_prices_data = []
         for i in range(201):

@@ -12,10 +12,14 @@ from typing import List, Dict
 
 
 def quick_sort(prices: List[float], low: int, high: int) -> List[float]:
-    if low < high:
-        pivot_idx = _partition(prices, low, high)
-        quick_sort(prices, low, pivot_idx - 1)
-        quick_sort(prices, pivot_idx + 1, high)
+    stack = [(low, high)] if low < high else []
+    while stack:
+        left, right = stack.pop()
+        pivot_idx = _partition(prices, left, right)
+        if left < pivot_idx - 1:
+            stack.append((left, pivot_idx - 1))
+        if pivot_idx + 1 < right:
+            stack.append((pivot_idx + 1, right))
     return prices
 
 
@@ -154,14 +158,12 @@ class PriceOptimizerAPI:
 def generate_sample_data(base_price: float = 1500,
                          num_competitors: int = 50,
                          variation: float = 0.3,
-                         use_fixed_seed: bool = False) -> List[float]:
+                         use_fixed_seed: bool = False,
+                         seed: int = None) -> List[float]:
     """Generate random competitor prices around a base price."""
-    if use_fixed_seed:
-        random.seed(42)
+    rng = random.Random(seed if seed is not None else (42 if use_fixed_seed else None))
     prices = [
-        round(base_price * (1 + random.uniform(-variation, variation)), 2)
+        round(base_price * (1 + rng.uniform(-variation, variation)), 2)
         for _ in range(num_competitors)
     ]
-    if use_fixed_seed:
-        random.seed()
     return prices

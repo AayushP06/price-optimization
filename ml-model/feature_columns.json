@@ -1,0 +1,14 @@
+[
+  "cost_price",
+  "competitor_min",
+  "competitor_median",
+  "competitor_max",
+  "price",
+  "margin_pct",
+  "price_to_competitor_median",
+  "competitor_position",
+  "category_encoded",
+  "month",
+  "rating",
+  "ad_spend"
+]
