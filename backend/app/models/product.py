@@ -1,39 +1,42 @@
 from datetime import datetime, timezone
-from app.database.db import db
+from typing import Any
+
+from sqlalchemy import DateTime, Float, Integer, JSON, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database.db import Base
 
 
-class Optimization(db.Model):
+class Optimization(Base):
     """Stores each price optimization result."""
+
     __tablename__ = "optimizations"
 
-    id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.String(100), index=True)
-    cost_price = db.Column(db.Float, nullable=False)
-    fixed_costs = db.Column(db.Float, default=0)
-    available_units = db.Column(db.Integer, nullable=True)
-    category = db.Column(db.String(40))
-    month = db.Column(db.Integer)
-    rating = db.Column(db.Float)
-    ad_spend = db.Column(db.Float)
-    method = db.Column(db.String(40))
-    product_name = db.Column(db.String(200))
-    quality = db.Column(db.String(20), default="standard")  # metadata only; not used by the model. Future option: filter competitor prices by tier.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[str | None] = mapped_column(String(100), index=True)
+    cost_price: Mapped[float] = mapped_column(Float, nullable=False)
+    fixed_costs: Mapped[float | None] = mapped_column(Float, default=0)
+    available_units: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(40))
+    month: Mapped[int | None] = mapped_column(Integer)
+    rating: Mapped[float | None] = mapped_column(Float)
+    ad_spend: Mapped[float | None] = mapped_column(Float)
+    method: Mapped[str | None] = mapped_column(String(40))
+    product_name: Mapped[str | None] = mapped_column(String(200))
+    quality: Mapped[str | None] = mapped_column(String(20), default="standard")  # metadata only; not used by the model. Future option: filter competitor prices by tier.
 
-    # Results
-    recommended_price = db.Column(db.Float)
-    expected_profit = db.Column(db.Float)
-    expected_units_sold = db.Column(db.Integer)
+    recommended_price: Mapped[float | None] = mapped_column(Float)
+    expected_profit: Mapped[float | None] = mapped_column(Float)
+    expected_units_sold: Mapped[int | None] = mapped_column(Integer)
 
-    # Complex data stored as JSON
-    competitor_prices = db.Column(db.JSON)
-    competitor_stats = db.Column(db.JSON)
-    price_analysis = db.Column(db.JSON)
+    competitor_prices: Mapped[list[float] | None] = mapped_column(JSON)
+    competitor_stats: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    price_analysis: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
 
-    # Metadata
-    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    duration_ms = db.Column(db.Float)
+    timestamp: Mapped[datetime | None] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    duration_ms: Mapped[float | None] = mapped_column(Float)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "product_id": self.product_id,
