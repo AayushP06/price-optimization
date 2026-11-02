@@ -1,7 +1,13 @@
 from logging.config import fileConfig
+from pathlib import Path
+import sys
 
 from alembic import context
 from sqlalchemy import create_engine, pool
+
+# Alembic's config-level prepend_sys_path is not consistently applied by
+# different CLI launchers on Windows; ensure `import app` works from here.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import get_settings
 from app.database.db import Base, _engine_url
