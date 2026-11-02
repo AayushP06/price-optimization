@@ -15,4 +15,4 @@ COPY --from=frontend-build /frontend/dist ./frontend/dist
 WORKDIR /app/backend
 ENV PORT=5000
 EXPOSE 5000
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} app.main:app"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5000}"]
