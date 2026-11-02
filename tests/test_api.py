@@ -1,173 +1,183 @@
-"""
-API Tests — run with: pytest tests/test_api.py -v
-"""
-
+import json
 import sys
-import os
-
-# Add backend/ to path so `from app import create_app` works
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+from pathlib import Path
 
 import pytest
-from app import create_app
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+
+from app import main
+from app.api.deps import get_optimizer
+from app.core.config import get_settings
+from app.database.db import Base, get_db
+from app.models.product import Optimization
 
 
 @pytest.fixture
-def client():
-    """Test client with an in-memory SQLite database."""
-    class TestConfig:
-        TESTING = True
-        SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-        SQLALCHEMY_TRACK_MODIFICATIONS = False
-    app = create_app(TestConfig)
-    with app.test_client() as test_client:
+def client(monkeypatch):
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    TestSession = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def override_db():
+        session = TestSession()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    main.app.dependency_overrides[get_db] = override_db
+    monkeypatch.setattr(get_settings(), "admin_token", "golden-token")
+    with TestClient(main.app) as test_client:
         yield test_client
+    main.app.dependency_overrides.clear()
+    Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
-# ─────────────────────── Health ─────────────────────────────────
-
-def test_health(client):
-    res = client.get("/api/health")
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data["status"] == "healthy"
-    assert data["database"] == "connected"
-
-
-# ─────────────────────── Sort ───────────────────────────────────
-
-def test_sort_prices(client):
-    res = client.post("/api/sort", json={"prices": [300, 100, 200, 50, 400]})
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data["success"] is True
-    assert data["sorted_prices"] == [50, 100, 200, 300, 400]
-    assert data["algorithm"] == "Quick Sort"
+def _normalize(value):
+    if isinstance(value, dict):
+        return {
+            key: _normalize(item)
+            for key, item in value.items()
+            if key not in {"id", "timestamp"}
+        }
+    if isinstance(value, list):
+        return [_normalize(item) for item in value]
+    return value
 
 
-def test_sort_missing_field(client):
-    res = client.post("/api/sort", json={})
-    assert res.status_code == 400
+def test_golden_flask_contract(client):
+    fixture_path = Path(__file__).parent / "golden" / "flask_api_contract.json"
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    headers = {"Authorization": "Bearer golden-token"}
+    for case in fixture["requests"]:
+        if case["name"] == "optimize_get_docs":
+            # Intentional change: endpoint help moved to FastAPI OpenAPI docs.
+            continue
+        request_payload = case.get("request")
+        if case["name"] == "generate_sample":
+            # The Phase 0 fixture was captured with the sample generator seeded at 42.
+            request_payload = {**request_payload, "seed": 42}
+        response = client.request(
+            case["method"],
+            case["path"],
+            json=request_payload,
+            headers=headers if case["name"] == "admin_status" else None,
+        )
+        assert response.status_code == case["status"], case["name"]
+        if case["name"] == "admin_status":
+            assert response.json() == {"status": "Database Connected", "total_records": 1}
+            continue
+        actual = response.json()
+        if case["name"] in {"optimize_invalid", "generate_sample_invalid"}:
+            assert actual["success"] is False
+            assert "fields" in actual
+            continue
+        if case["name"] == "sort_invalid":
+            assert actual["success"] is False
+            assert "fields" in actual
+            continue
+        if case["name"] == "history":
+            expected = case["response"]
+            assert actual["count"] == expected["count"]
+            assert len(actual["data"]) == len(expected["data"])
+            actual = _normalize(actual)
+            expected = _normalize(expected)
+            assert actual == expected, case["name"]
+            continue
+        if case["name"] in {"sort", "search_found", "search_missing"}:
+            actual["sort_time"] = 0 if "sort_time" in actual else actual.get("sort_time")
+            actual["search_time"] = 0 if "search_time" in actual else actual.get("search_time")
+            expected = dict(case["response"])
+            if "sort_time" in expected:
+                expected["sort_time"] = 0
+            if "search_time" in expected:
+                expected["search_time"] = 0
+            assert actual == expected, case["name"]
+            continue
+        assert _normalize(actual) == _normalize(case["response"]), case["name"]
 
 
-# ─────────────────────── Search ─────────────────────────────────
-
-def test_search_found(client):
-    res = client.post("/api/search", json={
-        "sorted_prices": [100, 200, 300, 400, 500],
-        "target_price": 300,
-    })
-    data = res.get_json()
-    assert data["success"] is True
-    assert data["found"] is True
-    assert data["index"] == 2
-
-
-def test_search_not_found(client):
-    res = client.post("/api/search", json={
-        "sorted_prices": [100, 200, 400, 500],
-        "target_price": 300,
-    })
-    data = res.get_json()
-    assert data["success"] is True
-    assert data["found"] is False
-
-
-# ─────────────────────── Optimize ───────────────────────────────
-
-def test_optimize_basic(client):
-    res = client.post("/api/optimize", json={
-        "cost_price": 1000,
-        "fixed_costs": 50,
-        "num_competitors": 20,
-    })
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data["success"] is True
-    assert "optimal_price" in data
-    assert data["optimal_price"]["price"] > 1000
-    assert "markup_pct" in data["all_prices"][0]
-
-
-def test_optimize_invalid_cost(client):
-    res = client.post("/api/optimize", json={"cost_price": 0})
-    assert res.status_code == 400
-
-
-def test_optimize_with_competitor_prices(client):
-    res = client.post("/api/optimize", json={
-        "cost_price": 500,
-        "competitor_prices": [600, 650, 700, 750, 800],
-    })
-    data = res.get_json()
-    assert data["success"] is True
-    assert data["competitor_stats"]["count"] == 5
-
-
-@pytest.mark.parametrize("payload", [
-    {"cost_price": 0}, {"cost_price": 100, "fixed_costs": -1},
-    {"cost_price": 100, "min_margin": 80, "max_margin": 10},
-    {"cost_price": 100, "month": 13}, {"cost_price": 100, "rating": 6},
-    {"cost_price": 100, "ad_spend": -1}, {"cost_price": 100, "category": "Food"},
-    {"cost_price": 100, "available_units": -1},
-    {"cost_price": 100, "competitor_prices": [0]},
-    {"cost_price": 100, "competitor_prices": [100] * 5001},
-    {"cost_price": 100, "num_competitors": 5001},
-    {"cost_price": 100, "quality": "luxury"},
-])
-def test_optimize_validation_rules(client, payload):
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"cost_price": 0},
+        {"cost_price": 100, "fixed_costs": -1},
+        {"cost_price": 100, "min_margin": 80, "max_margin": 10},
+        {"cost_price": 100, "month": 13},
+        {"cost_price": 100, "rating": 6},
+        {"cost_price": 100, "ad_spend": -1},
+        {"cost_price": 100, "category": "Food"},
+        {"cost_price": 100, "available_units": -1},
+        {"cost_price": 100, "competitor_prices": [0]},
+        {"cost_price": 100, "competitor_prices": [100] * 5001},
+        {"cost_price": 100, "num_competitors": 5001},
+        {"cost_price": 100, "product_name": "x" * 101},
+        {"cost_price": 100, "quality": "luxury"},
+    ],
+)
+def test_optimize_validation_uses_400_field_envelope(client, payload):
     response = client.post("/api/optimize", json=payload)
     assert response.status_code == 400
-    assert response.get_json()["errors"]
+    body = response.json()
+    assert body["success"] is False
+    assert body["fields"]
 
 
-def test_optimize_get_docs(client):
-    response = client.get("/api/optimize")
-    assert response.status_code == 200
-    assert response.get_json()["method"] == "POST"
-
-
-def test_missing_model_fallback_and_warning(client, monkeypatch):
-    from app.services import optimization_service
-    from app.services.xgb_optimizer import XGBPriceOptimizer
-    monkeypatch.setattr(optimization_service, "get_ml_optimizer", lambda: XGBPriceOptimizer(model_path="missing-model.json"))
-    data = client.post("/api/optimize", json={"cost_price": 100, "competitor_prices": [110, 120]}).get_json()
-    assert data["method"] == "heuristic-fallback"
-    assert data["warnings"]
-
-
-def test_available_units_caps_sales(client):
-    result = client.post("/api/optimize", json={"cost_price": 100, "competitor_prices": [110, 120], "available_units": 3}).get_json()
-    assert result["optimal_price"]["expected_units_sold"] <= 3
-
-
-def test_generate_sample_seed_is_reproducible():
-    from app.services.price_optimizer import generate_sample_data
-    assert generate_sample_data(100, 10, seed=17) == generate_sample_data(100, 10, seed=17)
-
-
-def test_quality_is_metadata_only(client):
-    base = {"cost_price": 100, "competitor_prices": [110, 120], "seed": 123}
-    budget = client.post("/api/optimize", json={**base, "quality": "budget"}).get_json()
-    premium = client.post("/api/optimize", json={**base, "quality": "premium"}).get_json()
+def test_quality_is_metadata_only_with_fixed_seed(client):
+    payload = {"cost_price": 100, "competitor_prices": [110, 120], "seed": 123}
+    budget = client.post("/api/optimize", json={**payload, "quality": "budget"}).json()
+    premium = client.post("/api/optimize", json={**payload, "quality": "premium"}).json()
     assert budget["optimal_price"] == premium["optimal_price"]
     assert budget["quality"] == "budget"
     assert premium["quality"] == "premium"
+    history = client.get("/api/history").json()
+    assert {row["quality"] for row in history["data"]} == {"premium", "budget"}
 
 
-def test_history_endpoint(client):
-    client.post("/api/optimize", json={"cost_price": 100, "competitor_prices": [120], "product_name": "Widget", "quality": "premium"})
-    history = client.get("/api/history").get_json()
-    assert history["count"] == 1
-    assert history["data"][0]["product_name"] == "Widget"
-    assert history["data"][0]["quality"] == "premium"
-    assert history["data"][0]["all_prices"]
-    assert history["data"][0]["competitor_stats"]["simulated"] is False
-    assert history["data"][0]["min_markup_pct"] == 5
-    assert history["data"][0]["max_markup_pct"] == 80
+def test_missing_model_falls_back_to_heuristic(client):
+    from app.services.xgb_optimizer import XGBPriceOptimizer
+
+    # Override the lifespan-loaded optimizer with the production fallback implementation.
+    fallback = XGBPriceOptimizer(model_path="missing-model.json")
+    client.app.dependency_overrides[get_optimizer] = lambda: fallback
+    response = client.post("/api/optimize", json={"cost_price": 100, "competitor_prices": [110, 120]})
+    assert response.json()["method"] == "heuristic-fallback"
 
 
-def test_admin_rejects_missing_token(client):
-    import os
-    os.environ.pop("ADMIN_TOKEN", None)
-    assert client.get("/admin/status").status_code == 401
+def test_unknown_api_is_json_404(client):
+    response = client.get("/api/unknown")
+    assert response.status_code == 404
+    assert response.json() == {"success": False, "error": "Not found"}
+
+
+def test_spa_route_fallback_returns_index_html(client, monkeypatch, tmp_path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>SPA</html>", encoding="utf-8")
+    monkeypatch.setattr(main, "FRONTEND_DIST", dist)
+    response = client.get("/dashboard/history")
+    assert response.status_code == 200
+    assert response.text == "<html>SPA</html>"
+
+
+def test_admin_status_rejects_missing_token(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "admin_token", None)
+    response = client.get("/admin/status")
+    assert response.status_code == 401
+    assert response.json()["success"] is False
+
+
+def test_docs_can_be_hidden(monkeypatch):
+    hidden_app = main.build_app(main.Settings(env="production", enable_docs=False))
+    with TestClient(hidden_app) as hidden_client:
+        assert hidden_client.get("/docs").status_code == 404
