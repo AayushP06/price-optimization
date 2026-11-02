@@ -1,37 +1,31 @@
-import html
-import logging
-import os
-import uuid
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
-from app.database.db import db
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import text, select, func
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.database.db import get_db
 from app.models.product import Optimization
+from app.schemas import APIResponse
 
-bp = Blueprint("health", __name__)
-logger = logging.getLogger(__name__)
-
-
-@bp.get("/api/health")
-def health():
-    try:
-        db.session.execute(db.text("SELECT 1"))
-        return jsonify({"status": "healthy", "database": "connected", "timestamp": datetime.now(timezone.utc).isoformat()})
-    except Exception:
-        error_id = str(uuid.uuid4())
-        logger.exception("Health check failed; error_id=%s", error_id)
-        return jsonify({"status": "unhealthy", "error": "Database unavailable", "error_id": error_id}), 500
+router = APIRouter(tags=["system"])
 
 
-@bp.get("/admin/status")
-def admin_status():
-    token = os.environ.get("ADMIN_TOKEN")
-    if not token or request.headers.get("Authorization") != f"Bearer {token}":
-        return jsonify({"error": "Unauthorized"}), 401
-    try:
-        count = Optimization.query.count()
-        return ("<html><body><h1>Database Connected</h1><p>Total records: " + html.escape(str(count)) + "</p></body></html>")
-    except Exception:
-        error_id = str(uuid.uuid4())
-        logger.exception("Admin status failed; error_id=%s", error_id)
-        return jsonify({"error": "Database unavailable", "error_id": error_id}), 500
+@router.get("/api/health", response_model=APIResponse, summary="Check API and database health")
+def health(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/admin/status", response_model=APIResponse, summary="Check protected database status")
+def admin_status(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    token = get_settings().admin_token
+    if not token or authorization != f"Bearer {token}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    count = db.scalar(select(func.count(Optimization.id))) or 0
+    return {"status": "Database Connected", "total_records": count}

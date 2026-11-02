@@ -1,50 +1,69 @@
-import logging
 import time
 
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from app.schemas import APIResponse
 from app.services.price_optimizer import binary_search, generate_sample_data, quick_sort
 
-bp = Blueprint("utils", __name__)
-logger = logging.getLogger(__name__)
+router = APIRouter(tags=["utilities"])
 
 
-@bp.post("/api/generate-sample")
-def generate_sample():
-    data = request.get_json(silent=True) or {}
-    try:
-        prices = generate_sample_data(float(data.get("base_price", 1500)), int(data.get("num_competitors", 50)), float(data.get("variation", .3)))
-        return jsonify({"success": True, "prices": prices})
-    except (TypeError, ValueError):
-        return jsonify({"success": False, "error": "Invalid sample data parameters"}), 400
+class GenerateSampleRequest(BaseModel):
+    base_price: float = Field(default=1500, gt=0)
+    num_competitors: int = Field(default=50, ge=1, le=5000)
+    variation: float = Field(default=0.3, ge=0, le=1)
+    seed: int | None = None
 
 
-@bp.post("/api/sort")
-def sort_prices():
-    data = request.get_json(silent=True) or {}
+@router.post("/api/generate-sample", response_model=APIResponse, summary="Generate sample competitor prices")
+def generate_sample(payload: GenerateSampleRequest):
+    prices = generate_sample_data(
+        payload.base_price, payload.num_competitors, payload.variation, seed=payload.seed
+    )
+    return {"success": True, "prices": prices}
+
+
+@router.post("/api/sort", response_model=APIResponse, summary="Sort competitor prices")
+def sort_prices(data: dict):
     prices = data.get("prices")
     if not isinstance(prices, list):
-        return jsonify({"success": False, "errors": {"prices": ["must be a list"]}}), 400
-    if len(prices) > 5000:
-        return jsonify({"success": False, "errors": {"prices": ["must contain at most 5000 items"]}}), 400
+        raise HTTPException(status_code=400, detail={"fields": {"prices": ["must be a list"]}})
+    if len(prices) > 100000:
+        raise HTTPException(status_code=400, detail={"fields": {"prices": ["must contain at most 100000 items"]}})
     try:
-        prices = [float(p) for p in prices]
+        values = [float(value) for value in prices]
     except (TypeError, ValueError):
-        return jsonify({"success": False, "errors": {"prices": ["must contain numbers"]}}), 400
-    start = time.time()
-    quick_sort(prices, 0, len(prices) - 1)
-    return jsonify({"success": True, "sorted_prices": prices, "sort_time": round(time.time() - start, 4), "algorithm": "Quick Sort"})
+        raise HTTPException(status_code=400, detail={"fields": {"prices": ["must contain numbers"]}})
+    started = time.perf_counter()
+    if len(values) > 5000:
+        values = sorted(values)
+    else:
+        quick_sort(values, 0, len(values) - 1)
+    elapsed = time.perf_counter() - started
+    return {
+        "success": True,
+        "sorted_prices": values,
+        "sort_time": round(elapsed, 4),
+        "algorithm": "Quick Sort",
+    }
 
 
-@bp.post("/api/search")
-def search_price():
-    data = request.get_json(silent=True) or {}
+@router.post("/api/search", response_model=APIResponse, summary="Find a price in a sorted list")
+def search_price(data: dict):
     if not isinstance(data.get("sorted_prices"), list) or "target_price" not in data:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
+        raise HTTPException(status_code=400, detail="Missing required fields")
     try:
-        values = [float(v) for v in data["sorted_prices"]]
+        values = [float(value) for value in data["sorted_prices"]]
         target = float(data["target_price"])
     except (TypeError, ValueError):
-        return jsonify({"success": False, "error": "Prices must be numeric"}), 400
-    start = time.time()
+        raise HTTPException(status_code=400, detail="Prices must be numeric")
+    started = time.perf_counter()
     index = binary_search(values, target)
-    return jsonify({"success": True, "index": index, "search_time": round(time.time() - start, 6), "found": index < len(values) and values[index] == target})
+    elapsed = time.perf_counter() - started
+    return {
+        "success": True,
+        "index": index,
+        "search_time": round(elapsed, 6),
+        "found": index < len(values) and values[index] == target,
+    }

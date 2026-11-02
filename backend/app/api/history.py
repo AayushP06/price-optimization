@@ -1,47 +1,43 @@
-import logging
-import uuid
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-from flask import Blueprint, jsonify, request
-from app.database.db import db
+from app.database.db import get_db
 from app.models.product import Optimization
+from app.schemas import APIResponse
 
-bp = Blueprint("history", __name__)
-logger = logging.getLogger(__name__)
-
-
-def _server_error():
-    error_id = str(uuid.uuid4())
-    logger.exception("History request failed; error_id=%s", error_id)
-    return jsonify({"error": "Request failed", "error_id": error_id}), 500
+router = APIRouter(tags=["history"])
 
 
-@bp.get("/api/history")
-def get_history():
-    try:
-        limit = min(max(int(request.args.get("limit", 50)), 1), 500)
-        query = Optimization.query
-        if request.args.get("product_id"):
-            query = query.filter_by(product_id=request.args["product_id"])
-        records = query.order_by(Optimization.timestamp.desc()).limit(limit).all()
-        return jsonify({"count": len(records), "data": [record.to_dict() for record in records]})
-    except Exception:
-        return _server_error()
+@router.get("/api/history", response_model=APIResponse, summary="List optimization history")
+def get_history(
+    limit: str = "50",
+    product_id: str | None = None,
+    db: Session = Depends(get_db),
+):
+    limit = min(max(int(limit), 1), 500)
+    statement = select(Optimization)
+    if product_id:
+        statement = statement.where(Optimization.product_id == product_id)
+    records = db.scalars(statement.order_by(Optimization.timestamp.desc()).limit(limit)).all()
+    return {"count": len(records), "data": [record.to_dict() for record in records]}
 
 
-@bp.get("/api/stats")
-def get_stats():
-    try:
-        total = Optimization.query.count()
-        avg_profit = db.session.query(db.func.avg(Optimization.expected_profit)).scalar() or 0
-        return jsonify({"total_optimizations": total, "average_profit": round(avg_profit, 2)})
-    except Exception:
-        return _server_error()
+@router.get("/api/stats", response_model=APIResponse, summary="Summarize optimization history")
+def get_stats(db: Session = Depends(get_db)):
+    total = db.scalar(select(func.count(Optimization.id))) or 0
+    average_profit = db.scalar(select(func.avg(Optimization.expected_profit))) or 0
+    return {"total_optimizations": total, "average_profit": round(average_profit, 2)}
 
 
-@bp.get("/api/products")
-def get_products():
-    try:
-        products = db.session.query(Optimization.product_id, db.func.count(Optimization.id).label("count")).group_by(Optimization.product_id).all()
-        return jsonify({"products": [{"product_id": item.product_id, "optimization_count": item.count} for item in products]})
-    except Exception:
-        return _server_error()
+@router.get("/api/products", response_model=APIResponse, summary="List products with optimization counts")
+def get_products(db: Session = Depends(get_db)):
+    rows = db.execute(
+        select(Optimization.product_id, func.count(Optimization.id).label("count"))
+        .group_by(Optimization.product_id)
+    ).all()
+    return {
+        "products": [
+            {"product_id": row.product_id, "optimization_count": row.count} for row in rows
+        ]
+    }

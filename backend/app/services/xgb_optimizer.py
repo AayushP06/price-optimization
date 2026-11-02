@@ -192,12 +192,3 @@ class XGBPriceOptimizer:
             if profit > best_profit:
                 best_profit, best_price = profit, p
         return round(best_price, 2), all_prices_data
-
-
-_optimizer_instance: Optional[XGBPriceOptimizer] = None
-
-def get_ml_optimizer() -> XGBPriceOptimizer:
-    global _optimizer_instance
-    if _optimizer_instance is None:
-        _optimizer_instance = XGBPriceOptimizer()
-    return _optimizer_instance

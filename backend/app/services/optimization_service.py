@@ -1,22 +1,20 @@
 """Application service for price recommendations."""
 import json
 from app.services.price_optimizer import generate_sample_data
-from app.services.xgb_optimizer import get_ml_optimizer
 
 
-def run_optimization(params: dict) -> dict:
+def run_optimization(params: dict, optimizer) -> dict:
     competitor_prices = params.get("competitor_prices") or generate_sample_data(
         params["cost_price"] * 1.5, params.get("num_competitors", 50), seed=params.get("seed")
     )
-    result = get_ml_optimizer().recommend(
+    result = optimizer.recommend(
         cost_price=params["cost_price"], fixed_costs=params.get("fixed_costs", 0),
         competitor_prices=competitor_prices, min_margin=params.get("min_markup_pct", 5),
         max_margin=params.get("max_markup_pct", 80), category=params.get("category", "Electronics"),
         month=params.get("month", 6), rating=params.get("rating", 4.2),
         ad_spend=params.get("ad_spend", 1000), available_units=params.get("available_units"),
     )
-    # XGBoost and NumPy return scalar subclasses that Flask and SQLAlchemy's
-    # JSON columns cannot serialize directly.
+    # XGBoost and NumPy return scalar subclasses that JSON columns cannot serialize directly.
     result = json.loads(json.dumps(result, default=lambda value: value.item()))
     result["quality"] = params.get("quality", "standard")
     result["product_name"] = params.get("product_name") or "Product"
