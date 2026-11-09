@@ -20,14 +20,14 @@ export default function ProfitCurve({ points = [], optimalPrice, minPrice, maxPr
     <div className="subsection-title"><h3>Expected profit by price</h3><span>{points.length} price points evaluated</span></div>
     <p className="chart-summary">{summary}</p>
     {loading ? <div className="profit-chart-skeleton" role="status" aria-label="Loading profit curve"><span /><span /><span /></div> : <div className="profit-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={data} margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
-      <CartesianGrid stroke="var(--border)" strokeDasharray="4 4" />
+      <CartesianGrid stroke="var(--rule)" strokeDasharray="4 4" />
       <XAxis dataKey="price" type="number" domain={['dataMin', 'dataMax']} tickFormatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
       <YAxis tickFormatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} />
-      {(minPrice != null && maxPrice != null) && <ReferenceArea x1={minPrice} x2={maxPrice} fill="var(--accent)" fillOpacity={0.08} strokeOpacity={0} />}
+      {(minPrice != null && maxPrice != null) && <ReferenceArea x1={minPrice} x2={maxPrice} fill="var(--acid)" fillOpacity={0.08} strokeOpacity={0} />}
       <Tooltip content={({ active, payload, label }) => active && payload?.length ? <div className="chart-tooltip"><strong>Price {rupees(label)}</strong><span>Markup {payload.find((item) => item.payload?.markup_pct != null)?.payload.markup_pct?.toFixed?.(1) ?? '—'}%</span>{payload.map((item) => <span key={item.dataKey}>{item.name === comparisonLabel ? comparisonLabel : 'Expected profit'}: {rupees(item.value)}</span>)}</div> : null} />
-      <Line type="monotone" dataKey="expected_profit" name="Expected profit" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
+      <Line type="monotone" dataKey="expected_profit" name="Expected profit" stroke="var(--acid)" strokeWidth={3} dot={false} activeDot={{ r: 5 }} connectNulls isAnimationActive={false} />
       {comparisonPoints?.length > 0 && <Line type="monotone" dataKey="compare_profit" name={comparisonLabel} stroke="var(--coral)" strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />}
-      <ReferenceDot x={optimal.price} y={optimal.expected_profit} r={5} fill="var(--accent)" stroke="var(--text-primary)" />
+      <ReferenceDot x={optimal.price} y={optimal.expected_profit} r={6} fill="var(--acid)" stroke="var(--paper)" strokeWidth={2} />
     </LineChart></ResponsiveContainer></div>}
     <p className="sr-only">{summary}</p>
   </section>;
