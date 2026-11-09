@@ -21,6 +21,8 @@ cd backend
 ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
+You can also start it from `backend` with `python app/main.py`; this runs without auto-reload.
+
 In another terminal, start Vite:
 
 ```powershell

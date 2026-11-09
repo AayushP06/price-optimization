@@ -1,9 +1,15 @@
 """FastAPI application entry point."""
 
 import logging
+import os
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Support `python app/main.py` when started from the backend directory.
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -99,3 +105,9 @@ def validation_errors_from_fastapi(exc: RequestValidationError) -> dict[str, lis
 
 
 app = build_app(get_settings())
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("PORT", "8000")))
